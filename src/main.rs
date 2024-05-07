@@ -1,20 +1,28 @@
-mod password_store;
+mod routers;
 
-use clap::Parser;
+use std::env;
 
-#[derive(Parser)]
-#[command(version, about, long_about=None)]
-struct Args {
-    #[arg(short, long)]
-    name: String,
+use axum::routing::{get, Router};
+use dotenv::dotenv;
+use routers::{auth_router::get_auth_router, pass_router::get_pass_router};
+use tokio::net::TcpListener;
 
-    #[arg(short, long)]
-    password: String,
+async fn index() -> String {
+    "Hello, World!".to_string()
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+    dotenv().ok();
+
+    let app = Router::new()
+        .route("/", get(index))
+        .nest_service("/api/v1/pass", get_pass_router())
+        .nest_service("/api/v1/auth", get_auth_router());
+
+    let addr = format!("0.0.0.0:{}", env::var("addr")?);
+    let listener = TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }

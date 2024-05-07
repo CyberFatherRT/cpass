@@ -311,10 +311,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "db_backup"
-version = "0.1.0"
-
-[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -968,10 +964,6 @@ dependencies = [
  "smallvec",
  "windows-targets 0.52.5",
 ]
-
-[[package]]
-name = "passwords"
-version = "0.1.0"
 
 [[package]]
 name = "paste"

@@ -44,7 +44,7 @@ pub async fn create_user(
         password_hint,
     } = payload;
 
-    let password = hash_password(state.clone(), &password).map_err(failed)?;
+    let password = hash_password(&state.sprng, &password).map_err(failed)?;
 
     let _ = sqlx::query!(
         r"INSERT INTO users VALUES ($1, $2, $3, $4, $5)",
@@ -101,7 +101,7 @@ pub async fn login(
 
     let claims = Claims {
         id: user.id.to_string(),
-        exp: get_current_timestamp(),
+        exp: get_current_timestamp() + 60 * 60,
     };
 
     let token = encode(
@@ -134,7 +134,7 @@ pub async fn update_user(
     let token_data = validate_token::<Claims>(&request, &state.jwt_decoding_key)?;
 
     let user_id = token_data.claims.id;
-    let user_id = Uuid::from_slice(user_id.as_bytes()).unwrap();
+    let user_id: Uuid = user_id.parse().map_err(failed)?;
 
     let ChangeUser {
         email,
@@ -154,6 +154,8 @@ pub async fn update_user(
     let password = password.unwrap_or(row.password);
     let username = username.unwrap_or(row.username);
 
+    let hashed_password = hash_password(&state.sprng, &password).map_err(failed)?;
+
     let _ = sqlx::query!(
         r"UPDATE users
           SET email = $2, username = $3, password = $4
@@ -162,7 +164,7 @@ pub async fn update_user(
         user_id,
         email,
         username,
-        password
+        hashed_password
     )
     .execute(&mut *conn)
     .await

@@ -1,20 +1,16 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use axum::http::{HeaderMap, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
-use ring::rand::SecureRandom;
+use ring::rand::{SecureRandom, SystemRandom};
 use serde::de::DeserializeOwned;
-
-use crate::AppState;
 
 pub fn failed<T>(_: T) -> StatusCode {
     StatusCode::INTERNAL_SERVER_ERROR
 }
 
-pub fn hash_password(state: Arc<AppState>, password: &str) -> Result<String> {
+pub fn hash_password(sprng: &SystemRandom, password: &str) -> Result<String> {
     let mut salt: [u8; 16] = [0; 16];
-    let _ = state.sprng.fill(&mut salt);
+    let _ = sprng.fill(&mut salt);
     let config = argon2::Config::owasp5();
     Ok(argon2::hash_encoded(password.as_bytes(), &salt, &config)?)
 }

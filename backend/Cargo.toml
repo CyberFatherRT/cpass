@@ -1,5 +1,5 @@
 [package]
-name = "auth"
+name = "cpass"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,3 +14,9 @@ serde_json = "1.0.116"
 sqlx = { version = "0.7.4", features = ["postgres", "uuid", "runtime-tokio"] }
 tokio = { version = "1.37.0", features = ["full"] }
 uuid = { version = "1.8.0", features = ["v4"] }
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+strip = true

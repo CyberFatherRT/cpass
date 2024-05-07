@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    structs::{ChangeUser, Claims, CreateUser, DeleteUser, LoginUser, User},
-    utils::{check_password, failed, hash_password, validate_token},
-    AppState,
+    auth::structs::{ChangeUser, Claims, CreateUser, DeleteUser, LoginUser, User},
+    auth::utils::{check_password, failed, hash_password, validate_token},
 };
 use axum::{
     body::Body,
@@ -14,6 +13,8 @@ use axum::{
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, Header};
 use serde_json::json;
 use uuid::Uuid;
+
+use super::AppState;
 
 pub async fn create_user(
     State(state): State<Arc<AppState>>,

@@ -3,6 +3,8 @@
 # Added by cargo
 
 /target
+.env
+db
 
 
 # Added by cargo

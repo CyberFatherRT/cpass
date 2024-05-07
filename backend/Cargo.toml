@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "auth",
+    "passwords",
+    "db_backup"
+]

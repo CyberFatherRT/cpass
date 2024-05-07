@@ -1,5 +1,5 @@
-mod routers;
 mod db;
+mod routers;
 
 use std::env;
 

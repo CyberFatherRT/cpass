@@ -2,22 +2,25 @@
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
+    email VARCHAR NOT NULL,
     username VARCHAR NOT NULL,
-    password VARCHAR NOT NULL
+    password VARCHAR NOT NULL,
+    password_hint TEXT
 );
 
 CREATE TABLE IF NOT EXISTS passwords (
     id UUID PRIMARY KEY,
-    owner_id UUID NOT NULL,
+    owner_id UUID,
+    name VARCHAR NOT NULL,
     website VARCHAR,
     username VARCHAR,
     description TEXT,
-    password VARCHAR NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES users(id);
+    CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS tags (
+    id SERIAL,
     password_id UUID,
-    tag VARCHAR NOT NULL,
-    FOREIGN KEY (password_id) REFERENCES passwords(id);
+    content VARCHAR,
+    CONSTRAINT fk_tag FOREIGN KEY (password_id) REFERENCES passwords(id)
 )

@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use super::structs::{ChangeUser, CreateUser, DeleteUser, LoginUser};
 use crate::{
-    auth::structs::{ChangeUser, Claims, CreateUser, DeleteUser, LoginUser, User},
-    auth::utils::{check_password, failed, hash_password, validate_token},
+    structs::{Claims, User},
+    utils::{check_password, failed, hash_password, validate_token},
+    AppState,
 };
 use axum::{
     body::Body,
@@ -14,30 +16,12 @@ use jsonwebtoken::{encode, get_current_timestamp, Algorithm, Header};
 use serde_json::json;
 use uuid::Uuid;
 
-use super::AppState;
-
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateUser>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
 
-    let row = sqlx::query!(
-        r"SELECT id FROM users WHERE email = $1 LIMIT 1",
-        payload.email
-    )
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(failed)?;
-
-    if row.is_some() {
-        return Ok(Response::builder()
-            .status(StatusCode::CONFLICT)
-            .body(Body::from("User already exist."))
-            .unwrap());
-    }
-
-    let user_id = uuid::Uuid::new_v4();
     let CreateUser {
         email,
         username,
@@ -45,11 +29,13 @@ pub async fn create_user(
         password_hint,
     } = payload;
 
-    let password = hash_password(&state.sprng, &password).map_err(failed)?;
+    let password = hash_password(&state.srng, &password).map_err(failed)?;
 
     let _ = sqlx::query!(
-        r"INSERT INTO users VALUES ($1, $2, $3, $4, $5)",
-        user_id,
+        r"
+        INSERT INTO users(email, username, password, password_hint)
+        VALUES ($1, $2, $3, $4)
+        ",
         email,
         username,
         password,
@@ -155,7 +141,7 @@ pub async fn update_user(
     let password = password.unwrap_or(row.password);
     let username = username.unwrap_or(row.username);
 
-    let hashed_password = hash_password(&state.sprng, &password).map_err(failed)?;
+    let hashed_password = hash_password(&state.srng, &password).map_err(failed)?;
 
     let _ = sqlx::query!(
         r"UPDATE users

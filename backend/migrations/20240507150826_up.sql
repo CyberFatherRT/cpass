@@ -1,26 +1,31 @@
--- Add migration script here
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY,
-    email VARCHAR NOT NULL,
-    username VARCHAR NOT NULL,
-    password VARCHAR NOT NULL,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email TEXT UNIQUE NOT NULL,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
     password_hint TEXT
 );
 
 CREATE TABLE IF NOT EXISTS passwords (
-    id UUID PRIMARY KEY,
-    owner_id UUID,
-    name VARCHAR NOT NULL,
-    website VARCHAR,
-    username VARCHAR,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    owner_id UUID NOT NULL,
+    password TEXT NOT NULL,
+    name TEXT NOT NULL,
+    website TEXT,
+    username TEXT,
     description TEXT,
     CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS tags (
-    id SERIAL,
     password_id UUID,
-    content VARCHAR,
+    content TEXT NOT NULL,
+    UNIQUE (password_id, content),
     CONSTRAINT fk_tag FOREIGN KEY (password_id) REFERENCES passwords(id)
-)
+);
+
+CREATE INDEX idx_email ON users USING hash(email);
+CREATE INDEX idx_passwords_owner_id ON passwords(owner_id);
+CREATE INDEX idx_tags_pass_id ON tags(password_id);

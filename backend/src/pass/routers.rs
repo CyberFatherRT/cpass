@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     body::Body,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderMap, Response, StatusCode},
     Json,
 };
@@ -18,7 +18,7 @@ use crate::{
 pub async fn get_all_passwords(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Json<Vec<Password>>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
 
     let id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
@@ -27,24 +27,42 @@ pub async fn get_all_passwords(
 
     let id: uuid::Uuid = id.parse().map_err(failed)?;
 
-    let _rows = sqlx::query_as!(Password, r"SELECT * FROM passwords WHERE owner_id = $1", id)
+    let rows = sqlx::query_as!(Password, r"SELECT * FROM passwords WHERE owner_id = $1", id)
         .fetch_all(&mut *conn)
         .await
         .map_err(failed)?;
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .body(Body::from("hello, from pass"))
-        .unwrap())
+    Ok(Json(rows))
 }
 
-// pub async fn get_password(
-//     request: HeaderMap,
-//     Path(id): Path<uuid::Uuid>,
-//     State(state): State<Arc<AppState>>,
-// ) -> Result<Response<Body>, StatusCode> {
-//     todo!()
-// }
+pub async fn get_password(
+    request: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Password>, StatusCode> {
+    let mut conn = state.db.acquire().await.map_err(failed)?;
+
+    let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
+
+    let user_id: uuid::Uuid = user_id.parse().map_err(failed)?;
+
+    let password = sqlx::query_as!(
+        Password,
+        r"
+        SELECT *
+        FROM passwords WHERE owner_id = $1 and id = $2
+        ",
+        user_id,
+        id,
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(failed)?;
+
+    Ok(Json(password))
+}
 
 pub async fn add_password(
     request: HeaderMap,
@@ -88,7 +106,7 @@ pub async fn add_password(
         .status(StatusCode::CREATED)
         .body(Body::from(
             json!({
-                "password_id":  password_id.id.to_string()
+                "password_id":  password_id.id
             })
             .to_string(),
         ))

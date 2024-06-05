@@ -38,6 +38,14 @@ pub async fn get_all_passwords(
         .unwrap())
 }
 
+// pub async fn get_password(
+//     request: HeaderMap,
+//     Path(id): Path<uuid::Uuid>,
+//     State(state): State<Arc<AppState>>,
+// ) -> Result<Response<Body>, StatusCode> {
+//     todo!()
+// }
+
 pub async fn add_password(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,

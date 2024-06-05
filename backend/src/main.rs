@@ -11,6 +11,9 @@ use jsonwebtoken::{DecodingKey, EncodingKey};
 use ring::rand::SystemRandom;
 use sqlx::PgPool;
 use tokio::net::TcpListener;
+use tower_http::trace::TraceLayer;
+use tracing::{info, Level};
+use utils::generate_bytes;
 
 pub struct AppState {
     db: PgPool,
@@ -23,17 +26,26 @@ pub struct AppState {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv()?;
 
+    tracing_subscriber::fmt()
+        .compact()
+        .with_target(false)
+        .with_max_level(Level::DEBUG)
+        .init();
+
     let port = env::var("PORT")?;
     let db_url = env::var("DATABASE_URL")?;
-    let jwt_secret = env::var("JWT_SECRET")?;
+    let jwt_secret = match env::var("JWT_SECRET") {
+        Ok(data) => data.as_bytes().to_vec(),
+        Err(_) => generate_bytes(32).to_vec(),
+    };
 
     let conn = sqlx::PgPool::connect(&db_url).await?;
 
     let app_state = Arc::new(AppState {
         db: conn,
         srng: SystemRandom::new(),
-        jwt_encoding_key: EncodingKey::from_secret(jwt_secret.as_bytes()),
-        jwt_decoding_key: DecodingKey::from_secret(jwt_secret.as_bytes()),
+        jwt_encoding_key: EncodingKey::from_secret(&jwt_secret),
+        jwt_decoding_key: DecodingKey::from_secret(&jwt_secret),
     });
 
     let auth_app = auth::get_auth_service(app_state.clone());
@@ -41,12 +53,13 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/api/healthcheck", get(StatusCode::OK))
         .nest("/api/v1/pass", pass_app)
-        .nest("/api/v1/auth", auth_app);
+        .nest("/api/v1/auth", auth_app)
+        .layer(TraceLayer::new_for_http());
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(addr).await?;
 
-    println!("INFO: server listen on :{}", port);
+    info!("server listening on 0.0.0.0:{}", port);
 
     axum::serve(listener, app).await?;
     Ok(())

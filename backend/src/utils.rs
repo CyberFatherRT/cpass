@@ -7,7 +7,7 @@ use aes_gcm::{
 use anyhow::{bail, Result};
 use axum::http::{HeaderMap, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
-use ring::rand::{SecureRandom, SystemRandom};
+use ring::rand::{self, SecureRandom, SystemRandom};
 use serde::de::DeserializeOwned;
 
 pub fn failed<T: Debug>(err: T) -> StatusCode {
@@ -70,4 +70,10 @@ pub fn encrypt(srng: &SystemRandom, password: &[u8], master_password: &[u8]) -> 
     encrypted_data.extend_from_slice(&ciphered_data);
 
     Ok(hex::encode(encrypted_data))
+}
+
+pub fn generate_bytes(number: usize) -> Vec<u8> {
+    let mut vec = Vec::with_capacity(number);
+    let _ = rand::SystemRandom::new().fill(&mut vec);
+    vec
 }

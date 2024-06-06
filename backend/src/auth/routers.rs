@@ -14,12 +14,12 @@ use axum::{
 };
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, Header};
 use serde_json::json;
-use uuid::Uuid;
+use sqlx::error::ErrorKind;
 
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateUser>,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Response<String>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
 
     let CreateUser {
@@ -43,11 +43,17 @@ pub async fn create_user(
     )
     .execute(&mut *conn)
     .await
-    .map_err(failed)?;
+    .map_err(|err| {
+        let err = err.into_database_error().unwrap();
+        if err.kind() == ErrorKind::UniqueViolation {
+            return StatusCode::CONFLICT;
+        }
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Response::builder()
         .status(StatusCode::CREATED)
-        .body(Body::from("User is created."))
+        .body("User is created.".to_string())
         .unwrap())
 }
 
@@ -77,6 +83,7 @@ pub async fn login(
     if !are_you_sus {
         return Ok(Response::builder()
             .status(StatusCode::UNAUTHORIZED)
+            .header("Content-Type", "application/json")
             .body(Body::from(
                 json!({
                     "password_hint": user.password_hint
@@ -87,7 +94,7 @@ pub async fn login(
     }
 
     let claims = Claims {
-        id: user.id.to_string(),
+        id: user.id,
         exp: get_current_timestamp() + 60 * 60,
     };
 
@@ -118,10 +125,9 @@ pub async fn update_user(
     Json(payload): Json<ChangeUser>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
-    let token_data = validate_token::<Claims>(&request, &state.jwt_decoding_key)?;
-
-    let user_id = token_data.claims.id;
-    let user_id: Uuid = user_id.parse().map_err(failed)?;
+    let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
 
     let ChangeUser {
         email,

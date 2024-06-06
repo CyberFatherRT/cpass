@@ -9,7 +9,7 @@ use axum::http::{HeaderMap, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use ring::rand::{self, SecureRandom, SystemRandom};
 use serde::de::DeserializeOwned;
-use tracing::error;
+use tracing::{error, info};
 
 pub fn failed<T: Debug>(err: T) -> StatusCode {
     error!("{:?}", err);
@@ -50,7 +50,11 @@ where
     Ok(token_data)
 }
 
-pub fn encrypt(srng: &SystemRandom, password: &[u8], master_password: &[u8]) -> Result<String> {
+pub fn encrypt(
+    srng: &SystemRandom,
+    password: &[u8],
+    master_password: &[u8],
+) -> Result<(Vec<u8>, Vec<u8>)> {
     let mut salt: [u8; 16] = [0; 16];
     let _ = srng.fill(&mut salt);
     let config = argon2::Config::owasp2();
@@ -70,7 +74,7 @@ pub fn encrypt(srng: &SystemRandom, password: &[u8], master_password: &[u8]) -> 
     let mut encrypted_data: Vec<u8> = nonce.to_vec();
     encrypted_data.extend_from_slice(&ciphered_data);
 
-    Ok(hex::encode(encrypted_data))
+    Ok((encrypted_data, salt.to_vec()))
 }
 
 pub fn generate_bytes(number: usize) -> Vec<u8> {

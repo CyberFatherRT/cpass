@@ -6,7 +6,7 @@ mod utils;
 
 use std::{env, sync::Arc};
 
-use axum::{http::StatusCode, routing::get, Router};
+use axum::{http::StatusCode, middleware::from_fn, routing::get, Router};
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use ring::rand::SystemRandom;
 use sqlx::PgPool;
@@ -54,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/healthcheck", get(StatusCode::OK))
         .nest("/api/v1/pass", pass_app)
         .nest("/api/v1/auth", auth_app)
+        .layer(from_fn(middleware::error_middlweware))
         .layer(TraceLayer::new_for_http());
 
     let addr = format!("0.0.0.0:{}", port);

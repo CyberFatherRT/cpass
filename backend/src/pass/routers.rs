@@ -25,8 +25,6 @@ pub async fn get_all_passwords(
         .claims
         .id;
 
-    let id: uuid::Uuid = id.parse().map_err(failed)?;
-
     let rows = sqlx::query_as!(Password, r"SELECT * FROM passwords WHERE owner_id = $1", id)
         .fetch_all(&mut *conn)
         .await
@@ -46,8 +44,6 @@ pub async fn get_password(
         .claims
         .id;
 
-    let user_id: uuid::Uuid = user_id.parse().map_err(failed)?;
-
     let password = sqlx::query_as!(
         Password,
         r"
@@ -57,11 +53,14 @@ pub async fn get_password(
         user_id,
         id,
     )
-    .fetch_one(&mut *conn)
+    .fetch_optional(&mut *conn)
     .await
     .map_err(failed)?;
 
-    Ok(Json(password))
+    match password {
+        Some(password) => Ok(Json(password)),
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 pub async fn add_password(
@@ -70,7 +69,10 @@ pub async fn add_password(
     Json(payload): Json<AddPassword>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
-    let Claims { id, .. } = validate_token::<Claims>(&request, &state.jwt_decoding_key)?.claims;
+    let id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
+
     let AddPassword {
         password,
         name,
@@ -80,19 +82,18 @@ pub async fn add_password(
         master_password,
     } = payload;
 
-    let id: uuid::Uuid = id.parse().map_err(failed)?;
-
-    let encrypted_password = encrypt(&state.srng, password.as_bytes(), master_password.as_bytes());
-    let encrypted_password = encrypted_password.map_err(failed)?;
+    let (encrypted_password, salt) =
+        encrypt(&state.srng, password.as_bytes(), master_password.as_bytes()).map_err(failed)?;
 
     let password_id = sqlx::query!(
         r#"
-        INSERT INTO passwords(owner_id, password, name, website, username, description)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO passwords(owner_id, password, salt, name, website, username, description)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id;
         "#,
         id,
         encrypted_password,
+        salt,
         name,
         website,
         username,
@@ -104,6 +105,7 @@ pub async fn add_password(
 
     let response = Response::builder()
         .status(StatusCode::CREATED)
+        .header("Content-Type", "application/json")
         .body(Body::from(
             json!({
                 "password_id":  password_id.id
@@ -113,6 +115,34 @@ pub async fn add_password(
         .unwrap();
 
     Ok(response)
+}
+
+pub async fn delete_password(
+    request: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<uuid::Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    let mut conn = state.db.acquire().await.map_err(failed)?;
+
+    let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
+
+    let res = sqlx::query!(
+        r#"
+        DELETE FROM passwords
+        WHERE owner_id = $1 AND id = $2
+        "#,
+        user_id,
+        id
+    )
+    .execute(&mut *conn)
+    .await;
+
+    match res {
+        Ok(_) => Ok(StatusCode::NO_CONTENT),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 pub async fn add_tags_to_password(

@@ -11,12 +11,14 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS passwords (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     owner_id UUID NOT NULL,
-    password TEXT NOT NULL,
+    password BYTEA NOT NULL,
+    salt BYTEA NOT NULL,
     name TEXT NOT NULL,
     website TEXT,
     username TEXT,
     description TEXT,
-    CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users(id)
+    CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users(id),
+    CHECK (octet_length(salt) = 16)
 );
 
 CREATE TABLE IF NOT EXISTS tags (

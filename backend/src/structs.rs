@@ -20,6 +20,7 @@ pub struct Password {
     pub website: Option<String>,
     pub username: Option<String>,
     pub description: Option<String>,
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +34,7 @@ impl Serialize for Password {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("Password", 8)?;
+        let mut state = serializer.serialize_struct("Password", 9)?;
         state.serialize_field("id", &self.id)?;
         state.serialize_field("owner_id", &self.owner_id)?;
         state.serialize_field("name", &self.name)?;
@@ -42,6 +43,7 @@ impl Serialize for Password {
         state.serialize_field("website", &self.website)?;
         state.serialize_field("username", &self.username)?;
         state.serialize_field("description", &self.description)?;
+        state.serialize_field("tags", &self.tags)?;
         state.end()
     }
 }

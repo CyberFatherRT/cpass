@@ -9,7 +9,7 @@ use axum::http::{HeaderMap, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
 use ring::rand::{self, SecureRandom, SystemRandom};
 use serde::de::DeserializeOwned;
-use tracing::{error, info};
+use tracing::error;
 
 pub fn failed<T: Debug>(err: T) -> StatusCode {
     error!("{:?}", err);

@@ -7,6 +7,7 @@ use axum::{
     Json,
 };
 use serde_json::json;
+use sqlx::error::ErrorKind;
 
 use crate::{
     pass::structs::{AddPassword, AddTagsToPassword},
@@ -25,10 +26,18 @@ pub async fn get_all_passwords(
         .claims
         .id;
 
-    let rows = sqlx::query_as!(Password, r"SELECT * FROM passwords WHERE owner_id = $1", id)
-        .fetch_all(&mut *conn)
-        .await
-        .map_err(failed)?;
+    let rows = sqlx::query_as!(
+        Password,
+        r"
+        SELECT *,
+               ARRAY(SELECT content FROM tags WHERE password_id = id) as tags
+        FROM passwords WHERE owner_id = $1
+        ",
+        id
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(failed)?;
 
     Ok(Json(rows))
 }
@@ -47,7 +56,8 @@ pub async fn get_password(
     let password = sqlx::query_as!(
         Password,
         r"
-        SELECT *
+        SELECT *,
+               ARRAY(SELECT content FROM tags WHERE tags.password_id = password_id) as tags
         FROM passwords WHERE owner_id = $1 and id = $2
         ",
         user_id,
@@ -68,7 +78,7 @@ pub async fn add_password(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddPassword>,
 ) -> Result<Response<Body>, StatusCode> {
-    let mut conn = state.db.acquire().await.map_err(failed)?;
+    let mut transaction = state.db.begin().await.map_err(failed)?;
     let id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
         .claims
         .id;
@@ -80,6 +90,7 @@ pub async fn add_password(
         username,
         description,
         master_password,
+        tags,
     } = payload;
 
     let (encrypted_password, salt) =
@@ -99,9 +110,38 @@ pub async fn add_password(
         username,
         description
     )
-    .fetch_one(&mut *conn)
-    .await
-    .map_err(failed)?;
+    .fetch_one(&mut *transaction)
+    .await;
+
+    if let Err(e) = password_id {
+        let _ = transaction.rollback();
+        return Err(failed(e));
+    }
+
+    let password_id = password_id.unwrap();
+
+    for tag in tags.unwrap_or_default() {
+        let res = sqlx::query!(
+            r#"
+            INSERT INTO tags (password_id, content)
+            VALUES ($1, $2)
+            "#,
+            password_id.id,
+            tag
+        )
+        .execute(&mut *transaction)
+        .await;
+
+        match res {
+            Ok(_) => continue,
+            Err(e) => {
+                let _ = transaction.rollback();
+                return Err(failed(e));
+            }
+        }
+    }
+
+    transaction.commit().await.map_err(failed)?;
 
     let response = Response::builder()
         .status(StatusCode::CREATED)
@@ -147,12 +187,12 @@ pub async fn delete_password(
 
 pub async fn add_tags_to_password(
     State(state): State<Arc<AppState>>,
+    Path(id): Path<uuid::Uuid>,
     Json(payload): Json<AddTagsToPassword>,
 ) -> Result<StatusCode, StatusCode> {
-    let AddTagsToPassword { id, tags } = payload;
+    let AddTagsToPassword { tags } = payload;
 
     let mut transaction = state.db.begin().await.map_err(failed)?;
-    let id: uuid::Uuid = id.parse().map_err(failed)?;
 
     for tag in tags {
         let res = sqlx::query!(
@@ -169,8 +209,13 @@ pub async fn add_tags_to_password(
         match res {
             Ok(_) => continue,
             Err(e) => {
-                let _ = transaction.rollback();
-                return Err(failed(e));
+                let e = e.into_database_error().unwrap();
+                if e.kind() == ErrorKind::UniqueViolation {
+                    continue;
+                } else {
+                    let _ = transaction.rollback();
+                    return Err(failed(e));
+                }
             }
         }
     }

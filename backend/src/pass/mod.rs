@@ -17,7 +17,7 @@ pub fn get_pass_service(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/passwords", get(get_all_passwords))
         .route("/password", post(add_password))
-        .route("/password", put(add_tags_to_password))
+        .route("/password/:id", put(add_tags_to_password))
         .route("/password/:id", get(get_password))
         .route("/password/:id", delete(delete_password))
         .layer(from_fn_with_state(state.clone(), auth_middleware))

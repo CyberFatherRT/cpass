@@ -8,10 +8,10 @@ pub struct AddPassword {
     pub username: Option<String>,
     pub description: Option<String>,
     pub master_password: String,
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
 pub struct AddTagsToPassword {
-    pub id: String,
     pub tags: Vec<String>,
 }

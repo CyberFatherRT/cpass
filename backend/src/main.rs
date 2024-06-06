@@ -11,7 +11,10 @@ use jsonwebtoken::{DecodingKey, EncodingKey};
 use ring::rand::SystemRandom;
 use sqlx::PgPool;
 use tokio::net::TcpListener;
-use tower_http::trace::TraceLayer;
+use tower_http::{
+    compression::{predicate::SizeAbove, CompressionLayer},
+    trace::TraceLayer,
+};
 use tracing::{info, Level};
 use utils::generate_bytes;
 
@@ -55,7 +58,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/pass", pass_app)
         .nest("/api/v1/auth", auth_app)
         .layer(from_fn(middleware::error_middlweware))
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        .layer(CompressionLayer::new().compress_when(SizeAbove::default()));
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(addr).await?;

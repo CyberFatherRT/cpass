@@ -40,7 +40,7 @@ pub async fn add_tags(
     .await
     .map_err(failed)?;
 
-    if is_owner.is_owner.unwrap_or_default() == false {
+    if !is_owner.is_owner.unwrap_or_default() {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -117,7 +117,7 @@ pub async fn delete_tags(
     .await
     .map_err(failed)?;
 
-    if is_owner.is_owner.unwrap_or_default() == false {
+    if !is_owner.is_owner.unwrap_or_default() {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -133,7 +133,7 @@ pub async fn delete_tags(
     .await
     .map_err(failed)?;
 
-    todo!()
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn set_tags(
@@ -159,7 +159,7 @@ pub async fn set_tags(
     .await
     .map_err(failed)?;
 
-    if is_owner.is_owner.unwrap_or_default() == false {
+    if !is_owner.is_owner.unwrap_or_default() {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -176,7 +176,7 @@ pub async fn set_tags(
     .await;
 
     if let Err(e) = res {
-        let _ = transaction.rollback();
+        let _ = transaction.rollback().await;
         return Err(failed(e));
     }
 
@@ -192,11 +192,11 @@ pub async fn set_tags(
     .await;
 
     if let Err(e) = res {
-        let _ = transaction.rollback();
+        let _ = transaction.rollback().await;
         return Err(failed(e));
     }
 
-    let _ = transaction.commit().await.map_err(failed)?;
+    let _ = transaction.commit().await;
 
     Ok(StatusCode::NO_CONTENT)
 }

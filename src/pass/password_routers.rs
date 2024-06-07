@@ -115,7 +115,7 @@ pub async fn add_password(
     .await;
 
     if let Err(e) = password_id {
-        let _ = transaction.rollback();
+        let _ = transaction.rollback().await;
         return Err(failed(e));
     }
 
@@ -134,9 +134,11 @@ pub async fn add_password(
     .await;
 
     if let Err(e) = res {
-        let _ = transaction.rollback();
+        let _ = transaction.rollback().await;
         return Err(failed(e));
     }
+
+    let _ = transaction.commit().await;
 
     let response = Response::builder()
         .status(StatusCode::CREATED)

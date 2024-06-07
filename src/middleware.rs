@@ -16,7 +16,7 @@ pub async fn auth_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let exp = validate_token::<Claims>(&req.headers(), &state.jwt_decoding_key)?
+    let exp = validate_token::<Claims>(req.headers(), &state.jwt_decoding_key)?
         .claims
         .exp;
 

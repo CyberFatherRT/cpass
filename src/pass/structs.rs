@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct AddPassword {
@@ -11,7 +11,7 @@ pub struct AddPassword {
     pub tags: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
-pub struct AddTagsToPassword {
+#[derive(Deserialize, Serialize)]
+pub struct Tags {
     pub tags: Vec<String>,
 }

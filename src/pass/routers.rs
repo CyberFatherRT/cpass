@@ -10,7 +10,7 @@ use serde_json::json;
 use sqlx::error::ErrorKind;
 
 use crate::{
-    pass::structs::{AddPassword, AddTagsToPassword},
+    pass::structs::{AddPassword, Tags},
     structs::{Claims, Password},
     utils::{encrypt, failed, validate_token},
     AppState,
@@ -120,28 +120,22 @@ pub async fn add_password(
 
     let password_id = password_id.unwrap();
 
-    for tag in tags.unwrap_or_default() {
-        let res = sqlx::query!(
-            r#"
-            INSERT INTO tags (password_id, content)
-            VALUES ($1, $2)
-            "#,
-            password_id.id,
-            tag
-        )
-        .execute(&mut *transaction)
-        .await;
+    let res = sqlx::query!(
+        r#"
+        INSERT INTO tags (password_id, content)
+        SELECT $1, unnest($2::text[])
+        ON CONFLICT (password_id, content) DO NOTHING
+        "#,
+        password_id.id,
+        &tags.unwrap_or_default()
+    )
+    .execute(&mut *transaction)
+    .await;
 
-        match res {
-            Ok(_) => continue,
-            Err(e) => {
-                let _ = transaction.rollback();
-                return Err(failed(e));
-            }
-        }
+    if let Err(e) = res {
+        let _ = transaction.rollback();
+        return Err(failed(e));
     }
-
-    transaction.commit().await.map_err(failed)?;
 
     let response = Response::builder()
         .status(StatusCode::CREATED)
@@ -186,41 +180,121 @@ pub async fn delete_password(
 }
 
 pub async fn add_tags_to_password(
-    State(state): State<Arc<AppState>>,
+    request: HeaderMap,
     Path(id): Path<uuid::Uuid>,
-    Json(payload): Json<AddTagsToPassword>,
-) -> Result<StatusCode, StatusCode> {
-    let AddTagsToPassword { tags } = payload;
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<Tags>,
+) -> Result<Response<Body>, StatusCode> {
+    let Tags { tags } = payload;
 
-    let mut transaction = state.db.begin().await.map_err(failed)?;
+    let mut conn = state.db.acquire().await.map_err(failed)?;
+    let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
 
-    for tag in tags {
-        let res = sqlx::query!(
-            r#"
-            INSERT INTO tags (password_id, content)
-            VALUES ($1, $2)
-            "#,
-            id,
-            tag
-        )
-        .execute(&mut *transaction)
-        .await;
+    let is_owner = sqlx::query!(
+        r#"
+        SELECT EXISTS(SELECT 1 FROM passwords WHERE id = $1 and owner_id = $2) as is_owner
+        "#,
+        id,
+        user_id
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(failed)?;
 
-        match res {
-            Ok(_) => continue,
-            Err(e) => {
-                let e = e.into_database_error().unwrap();
-                if e.kind() == ErrorKind::UniqueViolation {
-                    continue;
-                } else {
-                    let _ = transaction.rollback();
-                    return Err(failed(e));
-                }
-            }
-        }
+    if is_owner.is_owner.unwrap_or_default() == false {
+        return Err(StatusCode::FORBIDDEN);
     }
 
-    transaction.commit().await.map_err(failed)?;
+    let tags = sqlx::query!(
+        r#"
+        INSERT INTO tags (password_id, content)
+        SELECT $1, unnest($2::text[])
+        ON CONFLICT (password_id, content) DO NOTHING
+        RETURNING content
+        "#,
+        id,
+        &tags
+    )
+    .fetch_all(&mut *conn)
+    .await;
 
-    Ok(StatusCode::CREATED)
+    if let Err(e) = tags {
+        let e = e.into_database_error().unwrap();
+        if e.kind() == ErrorKind::UniqueViolation {
+            return Err(StatusCode::CONFLICT);
+        }
+        return Err(failed(e));
+    };
+
+    let tags = tags
+        .unwrap()
+        .iter()
+        .map(|tag| tag.content.clone())
+        .collect::<Vec<String>>();
+
+    if tags.is_empty() {
+        let response = Response::builder()
+            .status(StatusCode::NO_CONTENT)
+            .header("Content-Type", "application/json")
+            .body(Body::empty())
+            .unwrap();
+        return Ok(response);
+    }
+
+    let response = Response::builder()
+        .status(StatusCode::CREATED)
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            json!({
+                "added_tags": tags
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    Ok(response)
+}
+
+pub async fn delete_tags(
+    request: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<Tags>,
+) -> Result<StatusCode, StatusCode> {
+    let mut conn = state.db.acquire().await.map_err(failed)?;
+
+    let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
+
+    let is_owner = sqlx::query!(
+        r#"
+        SELECT EXISTS(SELECT 1 FROM passwords WHERE id = $1 and owner_id = $2) as is_owner
+        "#,
+        id,
+        user_id
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(failed)?;
+
+    if is_owner.is_owner.unwrap_or_default() == false {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let _ = sqlx::query!(
+        r#"
+        DELETE FROM tags
+        WHERE password_id = $1 AND content = ANY($2)
+        "#,
+        id,
+        &payload.tags
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(failed)?;
+
+    todo!()
 }

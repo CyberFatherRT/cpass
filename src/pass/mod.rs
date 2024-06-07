@@ -10,7 +10,8 @@ use axum::{
     Router,
 };
 use routers::{
-    add_password, add_tags_to_password, delete_password, get_all_passwords, get_password,
+    add_password, add_tags_to_password, delete_password, delete_tags, get_all_passwords,
+    get_password,
 };
 
 pub fn get_pass_service(state: Arc<AppState>) -> Router {
@@ -20,6 +21,7 @@ pub fn get_pass_service(state: Arc<AppState>) -> Router {
         .route("/password/:id", put(add_tags_to_password))
         .route("/password/:id", get(get_password))
         .route("/password/:id", delete(delete_password))
+        .route("/tag/:id", delete(delete_tags))
         .layer(from_fn_with_state(state.clone(), auth_middleware))
         .with_state(state)
 }

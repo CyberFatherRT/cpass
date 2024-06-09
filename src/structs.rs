@@ -1,5 +1,6 @@
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use sqlx::{prelude::FromRow, types::Uuid};
+use utoipa::ToSchema;
 
 #[derive(FromRow)]
 pub struct User {
@@ -10,9 +11,10 @@ pub struct User {
     pub password_hint: Option<String>,
 }
 
-#[derive(FromRow, Debug, Deserialize)]
+#[derive(FromRow, Debug, Deserialize, ToSchema)]
 pub struct Password {
     pub id: Uuid,
+    #[allow(dead_code)]
     pub owner_id: Uuid,
     pub password: Vec<u8>,
     pub salt: Vec<u8>,
@@ -34,9 +36,8 @@ impl Serialize for Password {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("Password", 9)?;
+        let mut state = serializer.serialize_struct("Password", 8)?;
         state.serialize_field("id", &self.id)?;
-        state.serialize_field("owner_id", &self.owner_id)?;
         state.serialize_field("name", &self.name)?;
         state.serialize_field("password", &hex::encode(&self.password))?;
         state.serialize_field("salt", &hex::encode(&self.salt))?;

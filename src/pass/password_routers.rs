@@ -17,6 +17,14 @@ use crate::{
 
 use super::structs::AddPassword;
 
+/// Get all passwords
+#[utoipa::path(
+    get,
+    path = "/api/v1/pass/passwords",
+    responses(
+        (status = 200, description = "Returns all passwords", body = [Vec<Password>]),
+    )
+)]
 pub async fn get_all_passwords(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
@@ -43,6 +51,15 @@ pub async fn get_all_passwords(
     Ok(Json(rows))
 }
 
+/// Get a password by id
+#[utoipa::path(
+    get,
+    path = "/api/v1/pass/password/{id}",
+    responses(
+        (status = 200, description = "Returns the password", body = [Password]),
+        (status = 404, description = "Password not found"),
+    )
+)]
 pub async fn get_password(
     request: HeaderMap,
     Path(id): Path<uuid::Uuid>,
@@ -74,6 +91,15 @@ pub async fn get_password(
     }
 }
 
+/// Add a password
+#[utoipa::path(
+    post,
+    path = "/api/v1/pass/password",
+    request_body = AddPassword,
+    responses(
+        (status = 201, description = "Password created", body = [AddPasswordResponse]),
+    )
+)]
 pub async fn add_password(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
@@ -145,7 +171,7 @@ pub async fn add_password(
         .header("Content-Type", "application/json")
         .body(Body::from(
             json!({
-                "password_id":  password_id.id
+                "password_id": password_id.id
             })
             .to_string(),
         ))
@@ -154,6 +180,16 @@ pub async fn add_password(
     Ok(response)
 }
 
+/// Update a password by id
+#[utoipa::path(
+    put,
+    path = "/api/v1/pass/password/{id}",
+    request_body = AddPassword,
+    responses(
+        (status = 204, description = "Password updated"),
+        (status = 404, description = "Password not found"),
+    )
+)]
 pub async fn update_password(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
@@ -173,7 +209,7 @@ pub async fn update_password(
     )
     .map_err(failed)?;
 
-    let _ = sqlx::query!(
+    let res = sqlx::query!(
         r#"
         UPDATE passwords
         SET password = $1,
@@ -183,6 +219,7 @@ pub async fn update_password(
             username = $5,
             description = $6
         WHERE owner_id = $7 AND id = $8
+        RETURNING id
         "#,
         encrypted_password,
         salt,
@@ -193,13 +230,25 @@ pub async fn update_password(
         user_id,
         id
     )
-    .execute(&mut *conn)
+    .fetch_optional(&mut *conn)
     .await
     .map_err(failed)?;
 
-    Ok(StatusCode::NO_CONTENT)
+    match res {
+        Some(_) => Ok(StatusCode::NO_CONTENT),
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }
 
+/// Delete a password by id
+#[utoipa::path(
+    delete,
+    path = "/api/v1/pass/password/{id}",
+    responses(
+        (status = 204, description = "Password deleted"),
+        (status = 404, description = "Password not found"),
+    )
+)]
 pub async fn delete_password(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
@@ -215,15 +264,17 @@ pub async fn delete_password(
         r#"
         DELETE FROM passwords
         WHERE owner_id = $1 AND id = $2
+        RETURNING id
         "#,
         user_id,
         id
     )
-    .execute(&mut *conn)
-    .await;
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(failed)?;
 
     match res {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Some(_) => Ok(StatusCode::NO_CONTENT),
+        None => Err(StatusCode::NOT_FOUND),
     }
 }

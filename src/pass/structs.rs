@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use uuid::Uuid;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct AddPassword {
     pub password: String,
     pub name: String,
@@ -11,7 +13,12 @@ pub struct AddPassword {
     pub tags: Option<Vec<String>>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Serialize, ToSchema)]
+pub struct AddPasswordResponse {
+    pub password_id: Uuid,
+}
+
+#[derive(Deserialize, Serialize, ToSchema)]
 pub struct Tags {
     pub tags: Vec<String>,
 }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::structs::{ChangeUser, CreateUser, DeleteUser, LoginUser};
+use super::structs::{CreateUser, DeleteUser, LoginUser, UpdateUser};
 use crate::{
     structs::{Claims, User},
     utils::{check_password, failed, hash_password, validate_token},
@@ -10,12 +10,21 @@ use axum::{
     body::Body,
     extract::{Json, State},
     http::{HeaderMap, Response, StatusCode},
-    response::Redirect,
 };
 use jsonwebtoken::{encode, get_current_timestamp, Algorithm, Header};
 use serde_json::json;
 use sqlx::error::ErrorKind;
 
+/// Create a new user
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/user",
+    request_body = CreateUser,
+    responses(
+        (status = 201, description = "User is created"),
+        (status = 409, description = "User already exists"),
+    )
+)]
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateUser>,
@@ -57,6 +66,17 @@ pub async fn create_user(
         .unwrap())
 }
 
+/// Login a user
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/login",
+    request_body = LoginUser,
+    responses(
+        (status = 200, description = "User is logged in", body = LoginResponse),
+        (status = 401, description = "Unauthorized", body = LoginUnauthorized),
+        (status = 404, description = "User not found"),
+    )
+)]
 pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginUser>,
@@ -119,24 +139,38 @@ pub async fn login(
         .unwrap())
 }
 
+/// Update a user information
+#[utoipa::path(
+    put,
+    path = "/api/v1/auth/user",
+    request_body = UpdateUser,
+    responses(
+        (status = 200, description = "User is updated"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn update_user(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<ChangeUser>,
+    Json(payload): Json<UpdateUser>,
 ) -> Result<Response<Body>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
     let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
         .claims
         .id;
 
-    let ChangeUser {
+    let UpdateUser {
         email,
         password,
         username,
+        password_hint,
     } = payload;
 
     let row = sqlx::query!(
-        r"SELECT email, password, username FROM users WHERE id = $1",
+        r"
+        SELECT email, password, username, password_hint
+        FROM users WHERE id = $1
+        ",
         user_id
     )
     .fetch_one(&mut *conn)
@@ -146,18 +180,21 @@ pub async fn update_user(
     let email = email.unwrap_or(row.email);
     let password = password.unwrap_or(row.password);
     let username = username.unwrap_or(row.username);
+    let password_hint = password_hint.unwrap_or_default();
 
     let hashed_password = hash_password(&state.srng, &password).map_err(failed)?;
 
     let _ = sqlx::query!(
-        r"UPDATE users
-          SET email = $2, username = $3, password = $4
-          WHERE id = $1
+        r"
+        UPDATE users
+        SET email = $2, username = $3, password = $4, password_hint = $5
+        WHERE id = $1
         ",
         user_id,
         email,
         username,
-        hashed_password
+        hashed_password,
+        password_hint
     )
     .execute(&mut *conn)
     .await
@@ -169,11 +206,21 @@ pub async fn update_user(
         .unwrap())
 }
 
+/// Delete a user
+#[utoipa::path(
+    delete,
+    path = "/api/v1/auth/user",
+    request_body = DeleteUser,
+    responses(
+        (status = 204, description = "User is deleted"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 pub async fn delete_user(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<DeleteUser>,
-) -> Result<Redirect, StatusCode> {
+) -> Result<StatusCode, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
     let DeleteUser { email } = payload;
     let _ = validate_token::<Claims>(&request, &state.jwt_decoding_key)?;
@@ -183,5 +230,5 @@ pub async fn delete_user(
         .await
         .map_err(failed)?;
 
-    Ok(Redirect::permanent("/"))
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -1,5 +1,5 @@
 pub mod routers;
-mod structs;
+pub mod structs;
 
 use std::sync::Arc;
 

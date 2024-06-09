@@ -7,7 +7,6 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use sqlx::error::ErrorKind;
 
 use crate::{
     pass::structs::Tags,
@@ -16,6 +15,16 @@ use crate::{
     AppState,
 };
 
+/// Add tags to a password
+#[utoipa::path(
+    get,
+    path = "/api/v1/pass/tag/{id}",
+    responses(
+        (status = StatusCode::NO_CONTENT, description = "No tags were added"),
+        (status = StatusCode::CREATED, description = "Tags were added"),
+        (status = 403, description = "Forbidden"),
+    )
+)]
 pub async fn add_tags(
     request: HeaderMap,
     Path(id): Path<uuid::Uuid>,
@@ -55,18 +64,10 @@ pub async fn add_tags(
         &tags
     )
     .fetch_all(&mut *conn)
-    .await;
-
-    if let Err(e) = tags {
-        let e = e.into_database_error().unwrap();
-        if e.kind() == ErrorKind::UniqueViolation {
-            return Err(StatusCode::CONFLICT);
-        }
-        return Err(failed(e));
-    };
+    .await
+    .map_err(failed)?;
 
     let tags = tags
-        .unwrap()
         .iter()
         .map(|tag| tag.content.clone())
         .collect::<Vec<String>>();
@@ -94,6 +95,16 @@ pub async fn add_tags(
     Ok(response)
 }
 
+/// Delete tags from a password
+#[utoipa::path(
+    delete,
+    path = "/api/v1/pass/tag/{id}",
+    responses(
+        (status = StatusCode::NO_CONTENT, description = "No tags were deleted"),
+        (status = StatusCode::OK, description = "Tags were deleted"),
+        (status = 403, description = "Forbidden"),
+    )
+)]
 pub async fn delete_tags(
     request: HeaderMap,
     Path(id): Path<uuid::Uuid>,
@@ -136,6 +147,15 @@ pub async fn delete_tags(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Set tags for a password
+#[utoipa::path(
+    put,
+    path = "/api/v1/pass/tag/{id}",
+    responses(
+        (status = StatusCode::NO_CONTENT, description = "Tags were set"),
+        (status = StatusCode::FORBIDDEN, description = "Forbidden"),
+    )
+)]
 pub async fn set_tags(
     request: HeaderMap,
     Path(id): Path<uuid::Uuid>,

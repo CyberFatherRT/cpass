@@ -1,6 +1,6 @@
-mod password_routers;
-mod structs;
-mod tag_routers;
+pub mod password_routers;
+pub mod structs;
+pub mod tag_routers;
 
 use std::sync::Arc;
 

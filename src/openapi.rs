@@ -8,18 +8,9 @@ use utoipa::OpenApi;
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        login,
-        create_user,
-        update_user,
-        delete_user,
-        add_password,
-        get_all_passwords,
-        get_password,
-        delete_password,
-        update_password,
-        add_tags,
-        delete_tags,
-        set_tags
+        login, create_user, update_user, delete_user,
+        add_password, get_all_passwords, get_password, delete_password, update_password,
+        add_tags, delete_tags, set_tags
     ),
     components(
         schemas(
@@ -33,10 +24,12 @@ use utoipa::OpenApi;
             LoginUser,
             LoginUnauthorized,
             LoginResponse
-        )
+        ),
     ),
     tags(
-        (name = "CPASS", description = "Password management")
+        (name = "Auth", description = "Authentication and user management"),
+        (name = "Password", description = "Password management"),
+        (name = "Tag", description = "Tag management")
     ),
 )]
 pub struct ApiDoc;

@@ -19,6 +19,7 @@ use sqlx::error::ErrorKind;
 #[utoipa::path(
     post,
     path = "/api/v1/auth/user",
+    tag = "Auth",
     request_body = CreateUser,
     responses(
         (status = 201, description = "User is created"),
@@ -70,6 +71,7 @@ pub async fn create_user(
 #[utoipa::path(
     post,
     path = "/api/v1/auth/login",
+    tag = "Auth",
     request_body = LoginUser,
     responses(
         (status = 200, description = "User is logged in", body = LoginResponse),
@@ -143,6 +145,7 @@ pub async fn login(
 #[utoipa::path(
     put,
     path = "/api/v1/auth/user",
+    tag = "Auth",
     request_body = UpdateUser,
     responses(
         (status = 200, description = "User is updated"),
@@ -210,6 +213,7 @@ pub async fn update_user(
 #[utoipa::path(
     delete,
     path = "/api/v1/auth/user",
+    tag = "Auth",
     request_body = DeleteUser,
     responses(
         (status = 204, description = "User is deleted"),

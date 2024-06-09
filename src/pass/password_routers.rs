@@ -21,6 +21,7 @@ use super::structs::AddPassword;
 #[utoipa::path(
     get,
     path = "/api/v1/pass/passwords",
+    tag = "Password",
     responses(
         (status = 200, description = "Returns all passwords", body = [Vec<Password>]),
     )
@@ -55,6 +56,7 @@ pub async fn get_all_passwords(
 #[utoipa::path(
     get,
     path = "/api/v1/pass/password/{id}",
+    tag = "Password",
     responses(
         (status = 200, description = "Returns the password", body = [Password]),
         (status = 404, description = "Password not found"),
@@ -95,6 +97,7 @@ pub async fn get_password(
 #[utoipa::path(
     post,
     path = "/api/v1/pass/password",
+    tag = "Password",
     request_body = AddPassword,
     responses(
         (status = 201, description = "Password created", body = [AddPasswordResponse]),
@@ -184,6 +187,7 @@ pub async fn add_password(
 #[utoipa::path(
     put,
     path = "/api/v1/pass/password/{id}",
+    tag = "Password",
     request_body = AddPassword,
     responses(
         (status = 204, description = "Password updated"),
@@ -244,6 +248,7 @@ pub async fn update_password(
 #[utoipa::path(
     delete,
     path = "/api/v1/pass/password/{id}",
+    tag = "Password",
     responses(
         (status = 204, description = "Password deleted"),
         (status = 404, description = "Password not found"),

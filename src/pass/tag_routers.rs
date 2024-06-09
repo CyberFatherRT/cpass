@@ -19,6 +19,7 @@ use crate::{
 #[utoipa::path(
     get,
     path = "/api/v1/pass/tag/{id}",
+    tag = "Tag",
     responses(
         (status = StatusCode::NO_CONTENT, description = "No tags were added"),
         (status = StatusCode::CREATED, description = "Tags were added"),
@@ -99,6 +100,7 @@ pub async fn add_tags(
 #[utoipa::path(
     delete,
     path = "/api/v1/pass/tag/{id}",
+    tag = "Tag",
     responses(
         (status = StatusCode::NO_CONTENT, description = "No tags were deleted"),
         (status = StatusCode::OK, description = "Tags were deleted"),
@@ -151,6 +153,7 @@ pub async fn delete_tags(
 #[utoipa::path(
     put,
     path = "/api/v1/pass/tag/{id}",
+    tag = "Tag",
     responses(
         (status = StatusCode::NO_CONTENT, description = "Tags were set"),
         (status = StatusCode::FORBIDDEN, description = "Forbidden"),

@@ -154,6 +154,52 @@ pub async fn add_password(
     Ok(response)
 }
 
+pub async fn update_password(
+    request: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<uuid::Uuid>,
+    Json(payload): Json<AddPassword>,
+) -> Result<StatusCode, StatusCode> {
+    let mut conn = state.db.acquire().await.map_err(failed)?;
+
+    let user_id = validate_token::<Claims>(&request, &state.jwt_decoding_key)?
+        .claims
+        .id;
+
+    let (encrypted_password, salt) = encrypt(
+        &state.srng,
+        payload.password.as_bytes(),
+        payload.master_password.as_bytes(),
+    )
+    .map_err(failed)?;
+
+    let _ = sqlx::query!(
+        r#"
+        UPDATE passwords
+        SET password = $1,
+            salt = $2,
+            name = $3,
+            website = $4,
+            username = $5,
+            description = $6
+        WHERE owner_id = $7 AND id = $8
+        "#,
+        encrypted_password,
+        salt,
+        payload.name,
+        payload.website,
+        payload.username,
+        payload.description,
+        user_id,
+        id
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(failed)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub async fn delete_password(
     request: HeaderMap,
     State(state): State<Arc<AppState>>,

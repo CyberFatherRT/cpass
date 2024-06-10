@@ -1,0 +1,13 @@
+# folder
+.git
+.idea
+target
+volumes
+
+# files
+.env
+.gitignore
+Dockerfile
+docker-compose.yaml
+LICENSE
+README.md

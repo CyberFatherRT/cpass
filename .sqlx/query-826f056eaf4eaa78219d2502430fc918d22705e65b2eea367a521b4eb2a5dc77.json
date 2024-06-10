@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE passwords\n        SET password = $1,\n            salt = $2,\n            name = $3,\n            website = $4,\n            username = $5,\n            description = $6\n        WHERE owner_id = $7 AND id = $8\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Bytea",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "826f056eaf4eaa78219d2502430fc918d22705e65b2eea367a521b4eb2a5dc77"
+}

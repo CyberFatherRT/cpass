@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM tags\n        WHERE password_id = $1 AND content = ANY($2)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aedaafb084fe39dd7cd1a34e932cff8211cd1311572817f539bd42c48fb79408"
+}

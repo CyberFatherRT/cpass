@@ -34,7 +34,6 @@ RUN cargo build --release --target x86_64-unknown-linux-musl
 FROM alpine AS final
 WORKDIR /app
 
-COPY migrations migrations
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/cpass cpass
 
 CMD ["/app/cpass"]

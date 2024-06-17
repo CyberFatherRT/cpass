@@ -23,7 +23,7 @@ use utoipa::OpenApi;
             DeleteUser,
             LoginUser,
             LoginUnauthorized,
-            LoginResponse
+            AuthUserResponse
         ),
     ),
     tags(

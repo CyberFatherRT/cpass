@@ -36,7 +36,7 @@ pub struct LoginUnauthorized {
 
 #[allow(dead_code)]
 #[derive(Deserialize, ToSchema)]
-pub struct LoginResponse {
+pub struct AuthUserResponse {
     pub email: String,
     pub username: String,
     pub token: String,

@@ -22,14 +22,14 @@ use sqlx::error::ErrorKind;
     tag = "Auth",
     request_body = CreateUser,
     responses(
-        (status = 201, description = "User is created"),
+        (status = 201, description = "User is created", body = AuthUserResponse),
         (status = 409, description = "User already exists"),
     )
 )]
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateUser>,
-) -> Result<Response<String>, StatusCode> {
+) -> Result<Response<Body>, StatusCode> {
     let mut conn = state.db.acquire().await.map_err(failed)?;
 
     let CreateUser {
@@ -41,17 +41,18 @@ pub async fn create_user(
 
     let password = hash_password(&state.srng, &password).map_err(failed)?;
 
-    let _ = sqlx::query!(
+    let res = sqlx::query!(
         r"
         INSERT INTO users(email, username, password, password_hint)
         VALUES ($1, $2, $3, $4)
+        RETURNING id, email, username
         ",
         email,
         username,
         password,
         password_hint
     )
-    .execute(&mut *conn)
+    .fetch_one(&mut *conn)
     .await
     .map_err(|err| {
         let err = err.into_database_error().unwrap();
@@ -61,9 +62,29 @@ pub async fn create_user(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    let claims = Claims {
+        id: res.id,
+        exp: get_current_timestamp() + 60 * 60,
+    };
+
+    let token = encode(
+        &Header::new(Algorithm::HS256),
+        &claims,
+        &state.jwt_encoding_key,
+    )
+    .map_err(failed)?;
+
     Ok(Response::builder()
         .status(StatusCode::CREATED)
-        .body("User is created.".to_string())
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            json!({
+                "email": res.email,
+                "username": res.username,
+                "token": token
+            })
+            .to_string(),
+        ))
         .unwrap())
 }
 
@@ -74,7 +95,7 @@ pub async fn create_user(
     tag = "Auth",
     request_body = LoginUser,
     responses(
-        (status = 200, description = "User is logged in", body = LoginResponse),
+        (status = 200, description = "User is logged in", body = AuthUserResponse),
         (status = 401, description = "Unauthorized", body = LoginUnauthorized),
         (status = 404, description = "User not found"),
     )

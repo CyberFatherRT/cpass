@@ -16,7 +16,7 @@ services:
             dockerfile: Dockerfile.frontend
         restart: always
         depends_on:
-            - cpass-api
+            - api
 
     db:
         image: postgres

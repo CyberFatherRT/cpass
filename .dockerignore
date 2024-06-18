@@ -1,12 +1,16 @@
 # folder
 .git
 .idea
+.svelte-kit
+node_modules
+build
 target
 volumes
 
 # files
 .env
 .gitignore
+bun.lockb
 Dockerfile
 docker-compose.yaml
 LICENSE

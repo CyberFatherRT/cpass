@@ -25,9 +25,13 @@ WORKDIR /app
 
 RUN rustup target add x86_64-unknown-linux-musl
 
-COPY . .
+COPY .sqlx .sqlx
+COPY migrations migrations
+COPY src-backend src-backend
+COPY Cargo.toml Cargo.toml
 COPY --from=planner /app/target target
 COPY --from=planner /app/Cargo.lock Cargo.lock
+
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
 

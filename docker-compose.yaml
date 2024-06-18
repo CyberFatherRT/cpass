@@ -16,7 +16,7 @@ services:
             dockerfile: Dockerfile.frontend
         restart: always
         depends_on:
-            - api
+            - backend
 
     db:
         image: postgres

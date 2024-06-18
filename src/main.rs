@@ -2,17 +2,23 @@ mod auth;
 mod middleware;
 mod openapi;
 mod pass;
+mod proto;
 mod structs;
 mod utils;
 
 use std::{env, sync::Arc};
 
+use crate::proto::{
+    auth::AuthService, auth_proto::auth_server::AuthServer, pass::PassService,
+    pass_proto::pass_server::PassServer, tag::TagService, tag_proto::tag_server::TagServer,
+};
 use axum::{http::StatusCode, middleware::from_fn, routing::get, Router};
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use openapi::ApiDoc;
 use ring::rand::SystemRandom;
 use sqlx::PgPool;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, try_join};
+use tonic::transport::Server;
 use tower_http::{
     compression::{predicate::SizeAbove, CompressionLayer},
     trace::TraceLayer,
@@ -39,15 +45,27 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(Level::DEBUG)
         .init();
 
-    let port = env::var("PORT")?;
     let db_url = env::var("DATABASE_URL")?;
+    let http_addr = env::var("HTTP_ADDR")?;
+    let grpc_addr = env::var("GRPC_ADDR")?;
     let jwt_secret = match env::var("JWT_SECRET") {
         Ok(data) => data.as_bytes().to_vec(),
         Err(_) => generate_bytes(32).to_vec(),
     };
 
-    let conn = sqlx::PgPool::connect(&db_url).await?;
+    let conn = PgPool::connect(&db_url).await?;
     sqlx::migrate!("./migrations").run(&conn).await?;
+
+    let reflection = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+        .build()?;
+
+    let grpc_server = Server::builder()
+        .add_service(reflection)
+        .add_service(AuthServer::new(AuthService::default()))
+        .add_service(PassServer::new(PassService::default()))
+        .add_service(TagServer::new(TagService::default()))
+        .serve(grpc_addr.parse()?);
 
     let app_state = Arc::new(AppState {
         db: conn,
@@ -58,7 +76,6 @@ async fn main() -> anyhow::Result<()> {
 
     let auth_app = auth::get_auth_service(app_state.clone());
     let pass_app = pass::get_pass_service(app_state.clone());
-
     let app = Router::new()
         .route("/api/healthcheck", get(StatusCode::OK))
         .nest("/api/v1/pass", pass_app)
@@ -68,11 +85,16 @@ async fn main() -> anyhow::Result<()> {
         .layer(TraceLayer::new_for_http())
         .layer(CompressionLayer::new().compress_when(SizeAbove::default()));
 
-    let addr = format!("0.0.0.0:{}", port);
-    let listener = TcpListener::bind(addr).await?;
+    let listener = TcpListener::bind(&http_addr).await?;
+    let http_server = axum::serve(listener, app);
 
-    info!("server listening on 0.0.0.0:{}", port);
+    info!("gRPC server listening on {}", grpc_addr);
+    info!("HTTP server listening on {}", http_addr);
 
-    axum::serve(listener, app).await?;
+    try_join!(
+        tokio::spawn(async { http_server.await }),
+        tokio::spawn(grpc_server)
+    );
+
     Ok(())
 }

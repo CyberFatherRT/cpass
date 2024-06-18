@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package types;
+
+message Empty {}
+
+message Uuid {
+  string uuid = 1;
+}
+
+message Tags {
+  repeated string tag = 1;
+}

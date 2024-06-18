@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package auth;
+
+import "types.proto";
+
+service Auth {
+  rpc Login(LoginRequest) returns (User);
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (types.Empty);
+  rpc DeleteUser(DeleteUserRequest) returns (types.Empty);
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string username = 2;
+  string password = 3;
+}
+
+message UpdateUserRequest {
+  optional string email = 1;
+  optional string username = 2;
+  optional string password = 3;
+  optional string password_hint = 4;
+}
+
+message DeleteUserRequest {
+  string email = 1;
+}
+
+message User {
+  string email = 1;
+  string token = 2;
+  string username = 3;
+}

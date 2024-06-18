@@ -10,12 +10,16 @@ axum = "0.7.5"
 dotenvy = "0.15.7"
 hex = "0.4.3"
 jsonwebtoken = "9.3.0"
+prost = { version = "0.12.6", features = ["prost-derive"] }
 ring = "0.17.8"
 rust-argon2 = "2.1.0"
 serde = { version = "1.0.200", features = ["derive"] }
 serde_json = "1.0.116"
 sqlx = { version = "0.7.4", features = ["postgres", "uuid", "runtime-tokio"] }
 tokio = { version = "1.37.0", features = ["full"] }
+tonic = "0.11.0"
+tonic-reflection = "0.11.0"
+tonic_include_protos = "0.1.2"
 tower-http = { version = "0.5.2", features = ["compression-full", "trace"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
@@ -23,8 +27,12 @@ utoipa = { version = "4.2.3", features = ["uuid"] }
 utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 uuid = { version = "1.8.0", features = ["serde", "v4"] }
 
+[build-dependencies]
+tonic-build = "0.11.0"
+
 [profile.release]
 codegen-units = 1
 opt-level = "z"
 lto = true
 strip = true
+

@@ -1,3 +1,3 @@
 # Cpass
 
-project under active development
+Project under active development

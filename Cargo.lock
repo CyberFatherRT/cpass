@@ -471,6 +471,7 @@ dependencies = [
  "dotenvy",
  "hex",
  "jsonwebtoken",
+ "lazy_static",
  "prost",
  "ring",
  "rust-argon2",

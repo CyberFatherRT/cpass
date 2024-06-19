@@ -1,10 +1,18 @@
 use crate::proto::{
-    tag_proto::{tag_server::Tag, SetTagsRequest,}, types::Empty,
+    tag_proto::{tag_server::Tag, SetTagsRequest},
+    types::Empty,
 };
+use sqlx::PgPool;
 use tonic::{Request, Response, Status};
 
-#[derive(Default)]
 pub struct TagService {
+    pool: PgPool,
+}
+
+impl TagService {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 }
 
 #[tonic::async_trait]

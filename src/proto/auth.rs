@@ -5,10 +5,18 @@ use crate::proto::{
     },
     types::Empty,
 };
+use sqlx::PgPool;
 use tonic::{Request, Response, Status};
 
-#[derive(Default)]
-pub struct AuthService { }
+pub struct AuthService {
+    pool: PgPool,
+}
+
+impl AuthService {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
 
 #[tonic::async_trait]
 impl Auth for AuthService {

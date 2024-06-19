@@ -2,12 +2,20 @@ use crate::proto::{
     pass_proto::{
         pass_server::Pass, AddPasswordRequest, DeletePasswordRequest, Password, Passwords,
         UpdatePasswordRequest,
-    }, types::{Empty, Uuid}
+    },
+    types::{Empty, Uuid},
 };
+use sqlx::PgPool;
 use tonic::{Request, Response, Status};
 
-#[derive(Default)]
 pub struct PassService {
+    pool: PgPool,
+}
+
+impl PassService {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 }
 
 #[tonic::async_trait]

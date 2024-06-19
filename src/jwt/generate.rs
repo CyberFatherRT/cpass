@@ -2,7 +2,7 @@ use std::env;
 
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use lazy_static::lazy_static;
-use ring::rand::{SecureRandom, SystemRandom};
+use rand::RngCore;
 use uuid::Uuid;
 
 use crate::error::CpassError;
@@ -38,7 +38,8 @@ pub fn validate_token(token: &str) -> Result<Claims, CpassError> {
 }
 
 pub fn generate_bytes(number: usize) -> Vec<u8> {
-    let mut vec = Vec::with_capacity(number);
-    let _ = SystemRandom::new().fill(&mut vec);
-    vec
+    let mut buf: Vec<u8> = vec![0; number];
+    let mut rng = rand::thread_rng();
+    rng.fill_bytes(&mut buf);
+    buf
 }

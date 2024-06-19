@@ -14,6 +14,7 @@ hex = "0.4.3"
 jsonwebtoken = "9.3.0"
 lazy_static = "1.4.0"
 prost = { version = "0.12.6", features = ["prost-derive"] }
+rand = "0.8.5"
 ring = "0.17.8"
 rust-argon2 = "2.1.0"
 serde = { version = "1.0.200", features = ["derive"] }

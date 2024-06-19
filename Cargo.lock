@@ -473,6 +473,7 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "prost",
+ "rand",
  "ring",
  "rust-argon2",
  "serde",

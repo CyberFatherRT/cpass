@@ -1,4 +1,4 @@
-use chrono::Duration;
+use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -20,9 +20,9 @@ impl Claims {
 
         Claims {
             iss: JWT_ISSUER.to_string(),
-            sub: user_id,
-            iat,
-            exp,
+            sub: *user_id,
+            iat: iat.timestamp(),
+            exp: exp.timestamp(),
         }
     }
 }

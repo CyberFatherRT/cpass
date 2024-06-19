@@ -37,7 +37,7 @@ pub fn validate_token(token: &str) -> Result<Claims, CpassError> {
     .map_err(CpassError::InvalidToken)
 }
 
-fn generate_bytes(number: usize) -> Vec<u8> {
+pub fn generate_bytes(number: usize) -> Vec<u8> {
     let mut vec = Vec::with_capacity(number);
     let _ = SystemRandom::new().fill(&mut vec);
     vec

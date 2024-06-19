@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS users
     email         TEXT UNIQUE NOT NULL,
     username      TEXT        NOT NULL,
     password      TEXT        NOT NULL,
-    password_hint TEXT
 );
 
 CREATE TABLE IF NOT EXISTS passwords

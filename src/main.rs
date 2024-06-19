@@ -1,6 +1,7 @@
-mod database;
 mod db;
 mod error;
+mod hashing;
+mod jwt;
 mod proto;
 
 use std::env;

@@ -25,7 +25,7 @@ pub enum CpassError {
 
     /// An error occured with the Argon2id hashing implementation.
     #[error("hashing error")]
-    HashingError,
+    HashingError(#[from] argon2::Error),
 
     /// Any other, unknown error sources.
     #[error("{0}")]
@@ -41,7 +41,7 @@ impl From<CpassError> for tonic::Status {
             CpassError::UserAlreadyExists(_) => Status::invalid_argument(error),
             CpassError::InvalidToken(_) => Status::unauthenticated(error),
             CpassError::DatabaseError(_) => Status::unavailable(error),
-            CpassError::HashingError => Status::unauthenticated(error),
+            CpassError::HashingError(_) => Status::unauthenticated(error),
             CpassError::Unknown(_) => Status::unknown(error),
         }
     }

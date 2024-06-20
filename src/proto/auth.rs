@@ -4,10 +4,7 @@ use crate::{
     db::Db,
     error::CpassError,
     hashing::Argon,
-    jwt::{
-        generate::{create_token, validate_token},
-        models::Claims,
-    },
+    jwt::{generate::create_token, models::Claims},
     proto::{
         auth_proto::{
             auth_server::Auth, CreateUserRequest, DeleteUserRequest, LoginRequest,
@@ -117,8 +114,8 @@ impl Auth for AuthService {
         let UpdateUserRequest {
             email,
             username,
-            password,
-        } = request.get_ref();
+            mut password,
+        } = request.get_ref().to_owned();
 
         let metadata = request.metadata();
         let headers = metadata.clone().into_headers();
@@ -133,6 +130,10 @@ impl Auth for AuthService {
             .to_str()
             .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
             .parse()?;
+
+        if let Some(pass) = password {
+            password = Some(Argon::hash_password(pass.as_bytes())?)
+        }
 
         let _ = sqlx::query!(
             r#"
@@ -152,7 +153,7 @@ impl Auth for AuthService {
         .await
         .map_err(|err| match err {
             sqlx::Error::Database(err) if err.is_unique_violation() => {
-                CpassError::UserAlreadyExists(email.to_owned().unwrap())
+                CpassError::UserAlreadyExists(email.unwrap())
             }
             err => CpassError::DatabaseError(err),
         })?;

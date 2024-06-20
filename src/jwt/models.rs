@@ -1,6 +1,11 @@
+use std::str::FromStr;
+
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
+use tonic::Status;
 use uuid::Uuid;
+
+use super::generate::validate_token;
 
 const JWT_ISSUER: &str = "authentication";
 const JWT_EXPIRY_HOURS: i64 = 1;
@@ -24,5 +29,17 @@ impl Claims {
             iat: iat.timestamp(),
             exp: exp.timestamp(),
         }
+    }
+}
+
+impl FromStr for Claims {
+    type Err = tonic::Status;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let claims: Vec<_> = s.split(" ").collect();
+        let token = claims.get(1).ok_or(Status::invalid_argument(
+            "Wrong authorization Bearer format",
+        ))?;
+        Ok(validate_token(token)?)
     }
 }

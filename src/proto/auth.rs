@@ -4,7 +4,10 @@ use crate::{
     db::Db,
     error::CpassError,
     hashing::Argon,
-    jwt::generate::create_token,
+    jwt::{
+        generate::{create_token, validate_token},
+        models::Claims,
+    },
     proto::{
         auth_proto::{
             auth_server::Auth, CreateUserRequest, DeleteUserRequest, LoginRequest,
@@ -110,7 +113,51 @@ impl Auth for AuthService {
         &self,
         request: Request<UpdateUserRequest>,
     ) -> Result<Response<Empty>, Status> {
-        todo!()
+        let mut conn = self.pool.conn().await?;
+        let UpdateUserRequest {
+            email,
+            username,
+            password,
+        } = request.get_ref();
+
+        let metadata = request.metadata();
+        let headers = metadata.clone().into_headers();
+
+        if !headers.contains_key("authorization") {
+            return Err(Status::unauthenticated("No authorization token was found"));
+        }
+
+        let claims: Claims = headers
+            .get("authorization")
+            .unwrap()
+            .to_str()
+            .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
+            .parse()?;
+
+        let _ = sqlx::query!(
+            r#"
+            UPDATE users
+            SET
+                email = COALESCE($1, email),
+                username = COALESCE($2, username),
+                password = COALESCE($3, password)
+            WHERE id = $4
+            "#,
+            email.as_deref(),
+            username.as_deref(),
+            password.as_deref(),
+            claims.sub
+        )
+        .execute(&mut *conn)
+        .await
+        .map_err(|err| match err {
+            sqlx::Error::Database(err) if err.is_unique_violation() => {
+                CpassError::UserAlreadyExists(email.to_owned().unwrap())
+            }
+            err => CpassError::DatabaseError(err),
+        })?;
+
+        Ok(Response::new(Empty {}))
     }
 
     async fn delete_user(

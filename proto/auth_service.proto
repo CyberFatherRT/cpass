@@ -26,7 +26,6 @@ message UpdateUserRequest {
   optional string email = 1;
   optional string username = 2;
   optional string password = 3;
-  optional string password_hint = 4;
 }
 
 message DeleteUserRequest {

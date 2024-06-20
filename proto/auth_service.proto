@@ -8,7 +8,7 @@ service Auth {
   rpc Login(LoginRequest) returns (User);
   rpc CreateUser(CreateUserRequest) returns (User);
   rpc UpdateUser(UpdateUserRequest) returns (types.Empty);
-  rpc DeleteUser(DeleteUserRequest) returns (types.Empty);
+  rpc DeleteUser(types.Empty) returns (types.Empty);
 }
 
 message LoginRequest {
@@ -26,10 +26,6 @@ message UpdateUserRequest {
   optional string email = 1;
   optional string username = 2;
   optional string password = 3;
-}
-
-message DeleteUserRequest {
-  string email = 1;
 }
 
 message User {

@@ -9,6 +9,6 @@ service Tag {
 }
 
 message SetTagsRequest {
-  types.Tags tags = 1;
+  repeated string tags = 1;
 }
 

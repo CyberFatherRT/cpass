@@ -18,7 +18,7 @@ message AddPasswordRequest {
   optional string website = 3;
   optional string username = 4;
   optional string description = 5;
-  optional types.Tags tags = 6;
+  repeated string tags = 6;
 }
 
 message UpdatePasswordRequest {
@@ -41,9 +41,9 @@ message Password {
   string uuid = 1;
   string name = 2;
   string encrypted_password = 3;
-  string salt = 4;
+  optional string salt = 4;
   optional string website = 5;
   optional string username = 6;
   optional string description = 7;
-  optional types.Tags tags = 8;
+  repeated string tags = 8;
 }

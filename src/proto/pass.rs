@@ -86,9 +86,65 @@ impl Pass for PassService {
     }
 
     async fn get_passwords(&self, request: Request<Empty>) -> Result<Response<Passwords>, Status> {
-        todo!()
-    }
+        let mut conn = self.pool.conn().await?;
 
+        let headers = request.metadata().to_owned().into_headers();
+
+        if !headers.contains_key("authorization") {
+            return Err(Status::unauthenticated("No authorization token was found"));
+        }
+
+        let claims: Claims = headers
+            .get("authorization")
+            .unwrap()
+            .to_str()
+            .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
+            .parse()?;
+
+        let owner_id = claims.sub;
+
+        let passwords = sqlx::query!(
+            r#"
+            SELECT id, password, name, salt, website, username, description, tags
+            FROM passwords
+            WHERE owner_id = $1
+            "#,
+            owner_id
+        )
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|err| match err {
+            sqlx::Error::RowNotFound => Status::not_found("Password with that id not found"),
+            _ => CpassError::DatabaseError(err).into(),
+        })?;
+
+        let passwords = passwords
+            .into_iter()
+            .map(|x| {
+                let uuid = x.id.to_string();
+                let name = x.name;
+                let encrypted_password = hex::encode(x.password);
+                let salt = x.salt.map(hex::encode);
+                let website = x.website;
+                let username = x.username;
+                let description = x.description;
+                let tags = x.tags;
+
+                Password {
+                    uuid,
+                    name,
+                    encrypted_password,
+                    salt,
+                    website,
+                    username,
+                    description,
+                    tags,
+                }
+            })
+            .collect::<Vec<Password>>();
+
+        Ok(Response::new(Passwords { passwords }))
+    }
     async fn add_password(
         &self,
         request: Request<AddPasswordRequest>,

@@ -15,10 +15,11 @@ service Pass {
 message AddPasswordRequest {
   string name = 1;
   string password = 2;
-  optional string website = 3;
-  optional string username = 4;
-  optional string description = 5;
-  repeated string tags = 6;
+  optional string salt = 3;
+  optional string website = 4;
+  optional string username = 5;
+  optional string description = 6;
+  repeated string tags = 7;
 }
 
 message UpdatePasswordRequest {

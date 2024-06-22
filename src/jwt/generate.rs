@@ -3,6 +3,7 @@ use std::env;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use lazy_static::lazy_static;
 use rand::RngCore;
+use tonic::{metadata::MetadataMap, Status};
 use uuid::Uuid;
 
 use crate::error::CpassError;
@@ -35,6 +36,19 @@ pub fn validate_token(token: &str) -> Result<Claims, CpassError> {
     )
     .map(|data| data.claims)
     .map_err(CpassError::InvalidToken)
+}
+
+pub fn claims_from_metadata(metadata: &MetadataMap) -> Result<Claims, Status> {
+    if !metadata.contains_key("authorization") {
+        return Err(Status::unauthenticated("No authorization token was found"));
+    }
+
+    metadata
+        .get("authorization")
+        .unwrap()
+        .to_str()
+        .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
+        .parse()
 }
 
 pub fn generate_bytes(number: usize) -> Vec<u8> {

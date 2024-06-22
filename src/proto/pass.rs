@@ -1,7 +1,7 @@
 use crate::{
     db::Db,
     error::CpassError,
-    jwt::models::Claims,
+    jwt::generate::claims_from_metadata,
     proto::{
         pass_proto::{
             pass_server::Pass, AddPasswordRequest, DeletePasswordRequest, Password, Passwords,
@@ -32,20 +32,7 @@ impl Pass for PassService {
             .parse::<uuid::Uuid>()
             .map_err(|_| Status::invalid_argument("Can not parse string as uuid."))?;
 
-        let headers = request.metadata().to_owned().into_headers();
-
-        if !headers.contains_key("authorization") {
-            return Err(Status::unauthenticated("No authorization token was found"));
-        }
-
-        let claims: Claims = headers
-            .get("authorization")
-            .unwrap()
-            .to_str()
-            .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
-            .parse()?;
-
-        let owner_id = claims.sub;
+        let owner_id = claims_from_metadata(request.metadata())?.sub;
 
         let password = sqlx::query!(
             r#"
@@ -88,20 +75,7 @@ impl Pass for PassService {
     async fn get_passwords(&self, request: Request<Empty>) -> Result<Response<Passwords>, Status> {
         let mut conn = self.pool.conn().await?;
 
-        let headers = request.metadata().to_owned().into_headers();
-
-        if !headers.contains_key("authorization") {
-            return Err(Status::unauthenticated("No authorization token was found"));
-        }
-
-        let claims: Claims = headers
-            .get("authorization")
-            .unwrap()
-            .to_str()
-            .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
-            .parse()?;
-
-        let owner_id = claims.sub;
+        let owner_id = claims_from_metadata(request.metadata())?.sub;
 
         let passwords = sqlx::query!(
             r#"
@@ -149,7 +123,48 @@ impl Pass for PassService {
         &self,
         request: Request<AddPasswordRequest>,
     ) -> Result<Response<Uuid>, Status> {
-        todo!()
+        let mut conn = self.pool.conn().await?;
+        let AddPasswordRequest {
+            name,
+            password,
+            salt,
+            website,
+            username,
+            description,
+            tags,
+        } = request.get_ref().to_owned();
+
+        let password = hex::decode(password)
+            .map_err(|_| Status::invalid_argument("Can not decode password from hex"))?;
+
+        let salt = salt
+            .map(|data| {
+                hex::decode(data)
+                    .map_err(|_| Status::invalid_argument("Can not decode salt from hex"))
+            })
+            .transpose()?;
+
+        let row = sqlx::query!(
+            r#"
+            INSERT INTO passwords(name, password, salt, website, username, description, tags)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+            "#,
+            name,
+            password,
+            salt,
+            website,
+            username,
+            description,
+            &tags
+        )
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(CpassError::DatabaseError)?;
+
+        Ok(Response::new(Uuid {
+            uuid: row.id.into(),
+        }))
     }
 
     async fn update_password(

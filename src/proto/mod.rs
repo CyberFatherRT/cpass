@@ -3,7 +3,6 @@ use tonic::include_file_descriptor_set;
 pub mod auth;
 pub mod pass;
 pub mod tag;
-mod temp;
 
 pub mod auth_proto {
     tonic::include_proto!("auth");

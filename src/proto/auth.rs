@@ -4,7 +4,7 @@ use crate::{
     db::Db,
     error::CpassError,
     hashing::Argon,
-    jwt::{generate::create_token, models::Claims},
+    jwt::generate::{claims_from_metadata, create_token},
     proto::{
         auth_proto::{auth_server::Auth, CreateUserRequest, LoginRequest, UpdateUserRequest, User},
         types::Empty,
@@ -111,25 +111,14 @@ impl Auth for AuthService {
         let UpdateUserRequest {
             email,
             username,
-            mut password,
+            password,
         } = request.get_ref().to_owned();
 
-        let headers = request.metadata().to_owned().into_headers();
+        let user_id = claims_from_metadata(request.metadata())?.sub;
 
-        if !headers.contains_key("authorization") {
-            return Err(Status::unauthenticated("No authorization token was found"));
-        }
-
-        let claims: Claims = headers
-            .get("authorization")
-            .unwrap()
-            .to_str()
-            .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
-            .parse()?;
-
-        if let Some(pass) = password {
-            password = Some(Argon::hash_password(pass.as_bytes())?)
-        }
+        let password = password
+            .map(|pass| Argon::hash_password(pass.as_bytes()))
+            .transpose()?;
 
         let _ = sqlx::query!(
             r#"
@@ -140,10 +129,10 @@ impl Auth for AuthService {
                 password = COALESCE($3, password)
             WHERE id = $4
             "#,
-            email.as_deref(),
-            username.as_deref(),
-            password.as_deref(),
-            claims.sub
+            email,
+            username,
+            password,
+            user_id
         )
         .execute(&mut *conn)
         .await
@@ -160,25 +149,14 @@ impl Auth for AuthService {
     async fn delete_user(&self, request: Request<Empty>) -> Result<Response<Empty>, Status> {
         let mut conn = self.pool.conn().await?;
 
-        let headers = request.metadata().to_owned().into_headers();
-
-        if !headers.contains_key("authorization") {
-            return Err(Status::unauthenticated("No authorization token was found"));
-        }
-
-        let claims: Claims = headers
-            .get("authorization")
-            .unwrap()
-            .to_str()
-            .map_err(|_| Status::invalid_argument("Wrong authorization Bearer format"))?
-            .parse()?;
+        let user_id = claims_from_metadata(request.metadata())?.sub;
 
         let _ = sqlx::query!(
             r#"
             DELETE FROM users
             WHERE id = $1
             "#,
-            claims.sub
+            user_id
         )
         .execute(&mut *conn)
         .await

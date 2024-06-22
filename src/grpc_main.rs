@@ -20,7 +20,6 @@ async fn main() -> anyhow::Result<()> {
 
     tracing_subscriber::fmt()
         .compact()
-        .with_target(false)
         .with_max_level(Level::DEBUG)
         .init();
 

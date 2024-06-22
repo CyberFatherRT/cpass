@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{
     db::Db,
     error::CpassError,
@@ -36,14 +34,13 @@ impl Auth for AuthService {
             email
         )
         .fetch_one(&mut *conn)
-        .await;
+        .await
+        .map_err(|err| match err {
+            sqlx::Error::RowNotFound => CpassError::InvalidUsernameOrPassword,
+            err => CpassError::DatabaseError(err),
+        })?;
 
-        let user = match user {
-            Ok(ok) => ok,
-            Err(_) => return Err(CpassError::InvalidUsernameOrPassword.into()),
-        };
-
-        match Argon::verify(password.deref().as_bytes(), &user.password) {
+        match Argon::verify(password.as_bytes(), &user.password) {
             Ok(false) => return Err(CpassError::InvalidUsernameOrPassword.into()),
             Err(e) => return Err(e.into()),
             _ => {}

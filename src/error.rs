@@ -1,3 +1,4 @@
+use axum::{http::StatusCode, response::Response};
 use tonic::Status;
 
 #[derive(thiserror::Error, Debug)]
@@ -44,5 +45,23 @@ impl From<CpassError> for tonic::Status {
             CpassError::HashingError(_) => Status::unauthenticated(error),
             CpassError::Unknown(_) => Status::unknown(error),
         }
+    }
+}
+
+impl From<CpassError> for Response<String> {
+    fn from(cpass_error: CpassError) -> Self {
+        let error = format!("{:?}", cpass_error);
+        let builder = Response::builder();
+        match cpass_error {
+            CpassError::InvalidRequest(_) => builder.status(StatusCode::BAD_REQUEST),
+            CpassError::InvalidUsernameOrPassword => builder.status(StatusCode::FORBIDDEN),
+            CpassError::UserAlreadyExists(_) => builder.status(StatusCode::CONFLICT),
+            CpassError::InvalidToken(_) => builder.status(StatusCode::UNAUTHORIZED),
+            CpassError::DatabaseError(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),
+            CpassError::HashingError(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),
+            CpassError::Unknown(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),
+        }
+        .body(error)
+        .unwrap()
     }
 }

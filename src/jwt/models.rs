@@ -36,7 +36,7 @@ impl FromStr for Claims {
     type Err = tonic::Status;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let claims: Vec<_> = s.split(" ").collect();
+        let claims: Vec<_> = s.split(' ').collect();
         let token = claims.get(1).ok_or(Status::invalid_argument(
             "Wrong authorization Bearer format",
         ))?;

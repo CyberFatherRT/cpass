@@ -3,6 +3,14 @@ name = "cpass"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+path = "src/grpc_main.rs"
+name = "grpc"
+
+[[bin]]
+path = "src/http_main.rs"
+name = "http"
+
 [dependencies]
 aes-gcm = "0.10.3"
 anyhow = "1.0.83"
@@ -28,6 +36,8 @@ tonic_include_protos = "0.1.2"
 tower-http = { version = "0.5.2", features = ["compression-full", "trace"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
+utoipa = { version = "4.2.3", features = ["uuid"] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 uuid = { version = "1.8.0", features = ["serde", "v4"] }
 
 [build-dependencies]

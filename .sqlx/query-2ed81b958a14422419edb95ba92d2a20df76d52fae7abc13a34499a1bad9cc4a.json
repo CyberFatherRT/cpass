@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO users(email, username, password, password_hint)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id, email, username\n        ",
+  "query": "\n            SELECT * FROM users WHERE email = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -17,21 +17,24 @@
         "ordinal": 2,
         "name": "username",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "password",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
-        "Text",
         "Text"
       ]
     },
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "ee4378f15a74f40e48a8b382c87e5daa49a3add728a14f78f8881eecc2576c2e"
+  "hash": "2ed81b958a14422419edb95ba92d2a20df76d52fae7abc13a34499a1bad9cc4a"
 }

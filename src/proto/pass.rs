@@ -134,6 +134,8 @@ impl Pass for PassService {
             tags,
         } = request.get_ref().to_owned();
 
+        let owner_id = claims_from_metadata(request.metadata())?.sub;
+
         let password = hex::decode(password)
             .map_err(|_| Status::invalid_argument("Can not decode password from hex"))?;
 
@@ -146,10 +148,11 @@ impl Pass for PassService {
 
         let row = sqlx::query!(
             r#"
-            INSERT INTO passwords(name, password, salt, website, username, description, tags)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO passwords(owner_id, name, password, salt, website, username, description, tags)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id
             "#,
+            owner_id,
             name,
             password,
             salt,
@@ -171,7 +174,66 @@ impl Pass for PassService {
         &self,
         request: Request<UpdatePasswordRequest>,
     ) -> Result<Response<Empty>, Status> {
-        todo!()
+        let mut conn = self.pool.conn().await?;
+        let UpdatePasswordRequest {
+            uuid,
+            name,
+            password,
+            salt,
+            website,
+            username,
+            description,
+            tags,
+        } = request.get_ref().to_owned();
+
+        let owner_id = claims_from_metadata(request.metadata())?.sub;
+
+        let password = password
+            .map(|data| {
+                hex::decode(data)
+                    .map_err(|_| Status::invalid_argument("Can not decode password from hex"))
+            })
+            .transpose()?;
+
+        let salt = salt
+            .map(|data| {
+                hex::decode(data)
+                    .map_err(|_| Status::invalid_argument("Can not decode salt from hex"))
+            })
+            .transpose()?;
+
+        let pass_id: uuid::Uuid = uuid
+            .parse()
+            .map_err(|_| Status::invalid_argument("Can not decode uuid field as UUID"))?;
+
+        let _ = sqlx::query!(
+            r#"
+            UPDATE passwords
+            SET
+                name = COALESCE($1, name),
+                password = COALESCE($2, password),
+                salt = COALESCE($3, salt),
+                website = COALESCE($4, website),
+                username = COALESCE($5, username),
+                description = COALESCE($6, description),
+                tags = COALESCE($7, tags)
+            WHERE id = $8 AND owner_id = $9
+            "#,
+            name,
+            password,
+            salt,
+            website,
+            username,
+            description,
+            &tags,
+            pass_id,
+            owner_id
+        )
+        .execute(&mut *conn)
+        .await
+        .map_err(CpassError::DatabaseError)?;
+
+        Ok(Response::new(Empty {}))
     }
 
     async fn delete_password(

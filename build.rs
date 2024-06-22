@@ -10,7 +10,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &[
                 "proto/auth_service.proto",
                 "proto/pass_service.proto",
-                "proto/tag_service.proto",
                 "proto/types.proto",
             ],
             &["proto"],

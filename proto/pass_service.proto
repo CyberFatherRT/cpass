@@ -24,18 +24,17 @@ message AddPasswordRequest {
 
 message UpdatePasswordRequest {
   string uuid = 1;
-  optional string website = 2;
-  optional string username = 3;
-  optional string description = 4;
-  optional string tags = 5;
+  optional string name = 2;
+  optional string password = 3;
+  optional string salt = 4;
+  optional string website = 5;
+  optional string username = 6;
+  optional string description = 7;
+  repeated string tags = 8;
 }
 
 message DeletePasswordRequest {
   string uuid = 1;
-}
-
-message Passwords {
-  repeated Password passwords = 1;
 }
 
 message Password {
@@ -47,4 +46,8 @@ message Password {
   optional string username = 6;
   optional string description = 7;
   repeated string tags = 8;
+}
+
+message Passwords {
+  repeated Password passwords = 1;
 }

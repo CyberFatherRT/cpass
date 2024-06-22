@@ -8,7 +8,7 @@ use std::env;
 
 use crate::proto::{
     auth::AuthService, auth_proto::auth_server::AuthServer, pass::PassService,
-    pass_proto::pass_server::PassServer, tag::TagService, tag_proto::tag_server::TagServer,
+    pass_proto::pass_server::PassServer,
 };
 use sqlx::PgPool;
 use tonic::transport::Server;
@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let db_url = env::var("DATABASE_URL")?;
-    let grpc_addr = env::var("GRPC_ADDR")?;
+    let grpc_addr = env::var("GRPC_ADDR")?.parse()?;
     let pool = PgPool::connect(&db_url).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
@@ -40,8 +40,7 @@ async fn main() -> anyhow::Result<()> {
         .add_service(reflection)
         .add_service(AuthServer::new(AuthService::new(pool.clone())))
         .add_service(PassServer::new(PassService::new(pool.clone())))
-        .add_service(TagServer::new(TagService::new(pool.clone())))
-        .serve(grpc_addr.parse()?)
+        .serve(grpc_addr)
         .await;
 
     Ok(())

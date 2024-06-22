@@ -204,7 +204,7 @@ impl Pass for PassService {
 
         let pass_id: uuid::Uuid = uuid
             .parse()
-            .map_err(|_| Status::invalid_argument("Can not decode uuid field as UUID"))?;
+            .map_err(|_| Status::invalid_argument("Can not parse uuid field as UUID"))?;
 
         let _ = sqlx::query!(
             r#"
@@ -240,6 +240,26 @@ impl Pass for PassService {
         &self,
         request: Request<DeletePasswordRequest>,
     ) -> Result<Response<Empty>, Status> {
-        todo!()
+        let mut conn = self.pool.conn().await?;
+        let DeletePasswordRequest { uuid } = request.get_ref();
+
+        let owner_id = claims_from_metadata(request.metadata())?.sub;
+        let pass_id: uuid::Uuid = uuid
+            .parse()
+            .map_err(|_| Status::invalid_argument("Can not parse uuid field as UUID"))?;
+
+        let _ = sqlx::query!(
+            r#"
+            DELETE FROM passwords
+            WHERE id = $1 AND owner_id = $2
+            "#,
+            pass_id,
+            owner_id
+        )
+        .execute(&mut *conn)
+        .await
+        .map_err(CpassError::DatabaseError);
+
+        Ok(Response::new(Empty {}))
     }
 }

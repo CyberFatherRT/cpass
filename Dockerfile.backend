@@ -55,17 +55,11 @@ COPY --from=planner /app/Cargo.lock Cargo.lock
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
 
-FROM alpine AS grpc
+FROM alpine AS final
 WORKDIR /app
 
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/grpc grpc
+COPY .scripts/run_all.sh .
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/grpc ./run/grpc
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/http ./run/http
 
-ENTRYPOINT ["/app/grpc"]
-
-
-FROM alpine AS http
-WORKDIR /app
-
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/http http
-
-ENTRYPOINT ["/app/http"]
+ENTRYPOINT [ "./run_all.sh" ]

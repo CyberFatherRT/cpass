@@ -2,13 +2,19 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Json, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::Response,
 };
 
-use crate::{db::Db, error::CpassError, hashing::Argon, jwt::generate::create_token, AppState};
+use crate::{
+    db::Db,
+    error::CpassError,
+    hashing::Argon,
+    jwt::generate::{claims_from_headers, create_token},
+    AppState,
+};
 
-use super::models::{CreateUserRequest, LoginRequest, User};
+use super::models::{CreateUserRequest, LoginRequest, UpdateUserRequest, User};
 
 /// Login a user
 #[utoipa::path(
@@ -113,4 +119,59 @@ pub async fn create_user(
     .into();
 
     Ok((StatusCode::CREATED, response))
+}
+
+/// Update a user information
+#[utoipa::path(
+    put,
+    path = "/api/v1/auth/user",
+    tag = "Auth",
+    request_body = UpdateUserRequest,
+    responses(
+        (status = 204, description = "User is updated"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
+pub async fn update_user(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<UpdateUserRequest>,
+) -> Result<StatusCode, Response<String>> {
+    let mut conn = state.pool.conn().await?;
+    let UpdateUserRequest {
+        email,
+        username,
+        password,
+    } = request;
+
+    let user_id = claims_from_headers(&headers)?.sub;
+
+    let password = password
+        .map(|pass| Argon::hash_password(pass.as_bytes()))
+        .transpose()?;
+
+    let _ = sqlx::query!(
+        r#"
+        UPDATE users
+        SET
+            email = COALESCE($1, email),
+            username = COALESCE($2, username),
+            password = COALESCE($3, password)
+        WHERE id = $4
+        "#,
+        email,
+        username,
+        password,
+        user_id
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(|err| match err {
+        sqlx::Error::Database(err) if err.is_unique_violation() => {
+            CpassError::UserAlreadyExists(email.unwrap())
+        }
+        err => CpassError::DatabaseError(err),
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

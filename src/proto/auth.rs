@@ -2,7 +2,7 @@ use crate::{
     db::Db,
     error::CpassError,
     hashing::Argon,
-    jwt::generate::{claims_from_metadata, create_token},
+    jwt::generate::{claims_from_headers, create_token},
     proto::{
         auth_proto::{auth_server::Auth, CreateUserRequest, LoginRequest, UpdateUserRequest, User},
         types::Empty,
@@ -111,7 +111,7 @@ impl Auth for AuthService {
             password,
         } = request.get_ref().to_owned();
 
-        let user_id = claims_from_metadata(request.metadata())?.sub;
+        let user_id = claims_from_headers(request.metadata())?.sub;
 
         let password = password
             .map(|pass| Argon::hash_password(pass.as_bytes()))
@@ -146,7 +146,7 @@ impl Auth for AuthService {
     async fn delete_user(&self, request: Request<Empty>) -> Result<Response<Empty>, Status> {
         let mut conn = self.pool.conn().await?;
 
-        let user_id = claims_from_metadata(request.metadata())?.sub;
+        let user_id = claims_from_headers(request.metadata())?.sub;
 
         let _ = sqlx::query!(
             r#"

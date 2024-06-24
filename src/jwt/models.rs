@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
-use tonic::Status;
 use uuid::Uuid;
+
+use crate::error::CpassError;
 
 use super::generate::validate_token;
 
@@ -33,12 +34,12 @@ impl Claims {
 }
 
 impl FromStr for Claims {
-    type Err = tonic::Status;
+    type Err = CpassError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let claims: Vec<_> = s.split(' ').collect();
-        let token = claims.get(1).ok_or(Status::invalid_argument(
-            "Wrong authorization Bearer format",
+        let token = claims.get(1).ok_or(CpassError::InvalidRequest(
+            "Wrong authorization Bearer format".to_string(),
         ))?;
         Ok(validate_token(token)?)
     }

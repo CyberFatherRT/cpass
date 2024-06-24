@@ -20,3 +20,10 @@ pub struct CreateUserRequest {
     pub username: String,
     pub password: String,
 }
+
+#[derive(Deserialize, ToSchema)]
+pub struct UpdateUserRequest {
+    pub email: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+}

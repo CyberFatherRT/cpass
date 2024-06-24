@@ -1,7 +1,7 @@
 use crate::{
     db::Db,
     error::CpassError,
-    jwt::generate::claims_from_metadata,
+    jwt::generate::claims_from_headers,
     proto::{
         pass_proto::{
             pass_server::Pass, AddPasswordRequest, DeletePasswordRequest, Password, Passwords,
@@ -32,7 +32,7 @@ impl Pass for PassService {
             .parse::<uuid::Uuid>()
             .map_err(|_| Status::invalid_argument("Can not parse string as uuid."))?;
 
-        let owner_id = claims_from_metadata(request.metadata())?.sub;
+        let owner_id = claims_from_headers(request.metadata())?.sub;
 
         let password = sqlx::query!(
             r#"
@@ -75,7 +75,7 @@ impl Pass for PassService {
     async fn get_passwords(&self, request: Request<Empty>) -> Result<Response<Passwords>, Status> {
         let mut conn = self.pool.conn().await?;
 
-        let owner_id = claims_from_metadata(request.metadata())?.sub;
+        let owner_id = claims_from_headers(request.metadata())?.sub;
 
         let passwords = sqlx::query!(
             r#"
@@ -134,7 +134,7 @@ impl Pass for PassService {
             tags,
         } = request.get_ref().to_owned();
 
-        let owner_id = claims_from_metadata(request.metadata())?.sub;
+        let owner_id = claims_from_headers(request.metadata())?.sub;
 
         let password = hex::decode(password)
             .map_err(|_| Status::invalid_argument("Can not decode password from hex"))?;
@@ -186,7 +186,7 @@ impl Pass for PassService {
             tags,
         } = request.get_ref().to_owned();
 
-        let owner_id = claims_from_metadata(request.metadata())?.sub;
+        let owner_id = claims_from_headers(request.metadata())?.sub;
 
         let password = password
             .map(|data| {
@@ -243,7 +243,7 @@ impl Pass for PassService {
         let mut conn = self.pool.conn().await?;
         let DeletePasswordRequest { uuid } = request.get_ref();
 
-        let owner_id = claims_from_metadata(request.metadata())?.sub;
+        let owner_id = claims_from_headers(request.metadata())?.sub;
         let pass_id: uuid::Uuid = uuid
             .parse()
             .map_err(|_| Status::invalid_argument("Can not parse uuid field as UUID"))?;

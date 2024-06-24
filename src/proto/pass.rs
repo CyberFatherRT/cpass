@@ -34,7 +34,7 @@ impl Pass for PassService {
 
         let owner_id = claims_from_headers(request.metadata())?.sub;
 
-        let password = sqlx::query!(
+        let row = sqlx::query!(
             r#"
             SELECT id, password, name, salt, website, username, description, tags
             FROM passwords
@@ -50,25 +50,15 @@ impl Pass for PassService {
             _ => CpassError::DatabaseError(err).into(),
         })?;
 
-        let uuid = password.id.to_string();
-        let name = password.name;
-        let encrypted_password = hex::encode(password.password);
-        let salt = password.salt.map(hex::encode);
-
-        let website = password.website;
-        let username = password.username;
-        let description = password.description;
-        let tags = password.tags;
-
         Ok(Response::new(Password {
-            uuid,
-            name,
-            encrypted_password,
-            salt,
-            website,
-            username,
-            description,
-            tags,
+            uuid: row.id.to_string(),
+            name: row.name,
+            encrypted_password: hex::encode(row.password),
+            salt: row.salt.map(hex::encode),
+            website: row.website,
+            username: row.username,
+            description: row.description,
+            tags: row.tags,
         }))
     }
 
@@ -87,33 +77,19 @@ impl Pass for PassService {
         )
         .fetch_all(&mut *conn)
         .await
-        .map_err(|err| match err {
-            sqlx::Error::RowNotFound => Status::not_found("Password with that id not found"),
-            _ => CpassError::DatabaseError(err).into(),
-        })?;
+        .map_err(CpassError::DatabaseError)?;
 
         let passwords = passwords
             .into_iter()
-            .map(|x| {
-                let uuid = x.id.to_string();
-                let name = x.name;
-                let encrypted_password = hex::encode(x.password);
-                let salt = x.salt.map(hex::encode);
-                let website = x.website;
-                let username = x.username;
-                let description = x.description;
-                let tags = x.tags;
-
-                Password {
-                    uuid,
-                    name,
-                    encrypted_password,
-                    salt,
-                    website,
-                    username,
-                    description,
-                    tags,
-                }
+            .map(|x| Password {
+                uuid: x.id.to_string(),
+                name: x.name,
+                encrypted_password: hex::encode(x.password),
+                salt: x.salt.map(hex::encode),
+                website: x.website,
+                username: x.username,
+                description: x.description,
+                tags: x.tags,
             })
             .collect::<Vec<Password>>();
 

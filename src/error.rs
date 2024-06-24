@@ -28,6 +28,10 @@ pub enum CpassError {
     #[error("hashing error")]
     HashingError(#[from] argon2::Error),
 
+    /// Not found error
+    #[error("not found")]
+    NotFound(String),
+
     /// Any other, unknown error sources.
     #[error("{0}")]
     Unknown(#[source] Box<dyn std::error::Error>),
@@ -43,6 +47,7 @@ impl From<CpassError> for tonic::Status {
             CpassError::InvalidToken(_) => Status::unauthenticated(error),
             CpassError::DatabaseError(_) => Status::unavailable(error),
             CpassError::HashingError(_) => Status::unauthenticated(error),
+            CpassError::NotFound(_) => Status::not_found(error),
             CpassError::Unknown(_) => Status::unknown(error),
         }
     }
@@ -59,6 +64,7 @@ impl From<CpassError> for Response<String> {
             CpassError::InvalidToken(_) => builder.status(StatusCode::UNAUTHORIZED),
             CpassError::DatabaseError(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),
             CpassError::HashingError(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),
+            CpassError::NotFound(_) => builder.status(StatusCode::NOT_FOUND),
             CpassError::Unknown(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),
         }
         .body(error)

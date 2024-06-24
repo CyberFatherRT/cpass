@@ -40,7 +40,7 @@ pub async fn get_password(
     .await
     .map_err(|err| match err {
         sqlx::Error::RowNotFound => {
-            CpassError::InvalidRequest("Password with that id not found".to_string())
+            CpassError::NotFound("Password with that id not found".to_string())
         }
         _ => CpassError::DatabaseError(err),
     })?;
@@ -65,6 +65,52 @@ pub async fn get_password(
         tags,
     }
     .into();
+
+    Ok((StatusCode::OK, response))
+}
+
+/// Get all passwords
+#[utoipa::path(
+    get,
+    path = "/api/v1/pass/passwords",
+    tag = "Password",
+    responses(
+        (status = 200, description = "Returns all passwords", body = Vec<Password>),
+    )
+)]
+pub async fn get_passwords(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+) -> Result<(StatusCode, Json<Vec<Password>>), Response<String>> {
+    let mut conn = state.pool.conn().await?;
+    let owner_id = claims_from_headers(&headers)?.sub;
+
+    let passwords = sqlx::query!(
+        r#"
+        SELECT id, password, name, salt, website, username, description, tags
+        FROM passwords
+        WHERE owner_id = $1
+        "#,
+        owner_id
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(CpassError::DatabaseError)?;
+
+    let response: Json<Vec<Password>> = passwords
+        .into_iter()
+        .map(|x| Password {
+            uuid: x.id,
+            name: x.name,
+            encrypted_password: x.password,
+            salt: x.salt,
+            website: x.website,
+            username: x.username,
+            description: x.description,
+            tags: x.tags,
+        })
+        .collect::<Vec<Password>>()
+        .into();
 
     Ok((StatusCode::OK, response))
 }

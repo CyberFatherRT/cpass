@@ -13,3 +13,10 @@ pub struct User {
     pub token: String,
     pub username: String,
 }
+
+#[derive(Deserialize, ToSchema)]
+pub struct CreateUserRequest {
+    pub email: String,
+    pub username: String,
+    pub password: String,
+}

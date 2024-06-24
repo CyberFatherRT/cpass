@@ -54,7 +54,7 @@ impl From<CpassError> for Response<String> {
         let builder = Response::builder();
         match cpass_error {
             CpassError::InvalidRequest(_) => builder.status(StatusCode::BAD_REQUEST),
-            CpassError::InvalidUsernameOrPassword => builder.status(StatusCode::FORBIDDEN),
+            CpassError::InvalidUsernameOrPassword => builder.status(StatusCode::UNAUTHORIZED),
             CpassError::UserAlreadyExists(_) => builder.status(StatusCode::CONFLICT),
             CpassError::InvalidToken(_) => builder.status(StatusCode::UNAUTHORIZED),
             CpassError::DatabaseError(_) => builder.status(StatusCode::INTERNAL_SERVER_ERROR),

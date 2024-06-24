@@ -7,11 +7,12 @@ use std::sync::Arc;
 use crate::AppState;
 use axum::{routing::post, Router};
 
-use self::auth::login;
+use self::auth::{create_user, login};
 
 pub fn get_auth_service(app_state: AppState) -> Router {
     Router::new()
         .route("/login", post(login))
+        .route("/user", post(create_user))
         .with_state(Arc::new(app_state))
 }
 

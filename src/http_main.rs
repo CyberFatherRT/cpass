@@ -6,9 +6,12 @@ mod jwt;
 use std::env;
 
 use axum::{http::StatusCode, routing::get, Router};
+use routers::openapi::ApiDoc;
 use sqlx::PgPool;
 use tokio::net::TcpListener;
-use tracing::Level;
+use tracing::{info, Level};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 mod routers;
 
@@ -41,10 +44,12 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/api/healthcheck", get(StatusCode::OK))
         .nest("/api/v1/pass", pass_app)
-        .nest("/api/v1/auth", auth_app);
+        .nest("/api/v1/auth", auth_app)
+        .merge(SwaggerUi::new("/api/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()));
+
+    info!("Server listen on {:?}", http_addr);
 
     let listener = TcpListener::bind(http_addr).await?;
-
     axum::serve(listener, app).await?;
 
     Ok(())

@@ -41,6 +41,6 @@ impl FromStr for Claims {
         let token = claims.get(1).ok_or(CpassError::InvalidRequest(
             "Wrong authorization Bearer format".to_string(),
         ))?;
-        Ok(validate_token(token)?)
+        validate_token(token)
     }
 }

@@ -1,5 +1,6 @@
 pub mod auth;
 mod models;
+pub mod openapi;
 pub mod pass;
 
 use std::sync::Arc;

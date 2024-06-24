@@ -4,7 +4,7 @@ use axum::http::HeaderMap;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use lazy_static::lazy_static;
 use rand::RngCore;
-use tonic::{metadata::MetadataMap, Status};
+use tonic::metadata::MetadataMap;
 use uuid::Uuid;
 
 use crate::error::CpassError;

@@ -175,3 +175,34 @@ pub async fn update_user(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+/// Delete a user
+#[utoipa::path(
+    delete,
+    path = "/api/v1/auth/user",
+    tag = "Auth",
+    responses(
+        (status = 204, description = "User is deleted"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
+pub async fn delete_user(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+) -> Result<StatusCode, Response<String>> {
+    let mut conn = state.pool.conn().await?;
+    let user_id = claims_from_headers(&headers)?.sub;
+
+    let _ = sqlx::query!(
+        r#"
+        DELETE FROM users
+        WHERE id = $1
+        "#,
+        user_id
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(CpassError::DatabaseError);
+
+    Ok(StatusCode::NO_CONTENT)
+}

@@ -47,7 +47,11 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/auth", auth_app)
         .merge(SwaggerUi::new("/api/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()));
 
+<<<<<<< HEAD
     info!("Server listen on {:?}", http_addr);
+=======
+    info!("HTTP server listening on {}", http_addr);
+>>>>>>> 9b00a17 (add: swagger openapi documentation)
 
     let listener = TcpListener::bind(http_addr).await?;
     axum::serve(listener, app).await?;

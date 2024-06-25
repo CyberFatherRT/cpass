@@ -13,7 +13,7 @@ use axum::{
 
 use self::{
     auth::{create_user, delete_user, login, update_user},
-    pass::{get_password, get_passwords},
+    pass::{add_password, get_password, get_passwords},
 };
 
 pub fn get_auth_service(app_state: AppState) -> Router {
@@ -28,6 +28,7 @@ pub fn get_auth_service(app_state: AppState) -> Router {
 pub fn get_pass_service(app_state: AppState) -> Router {
     Router::new()
         .route("/passwords", get(get_passwords))
+        .route("/password", post(add_password))
         .route("/password/:id", get(get_password))
         .with_state(Arc::new(app_state))
 }

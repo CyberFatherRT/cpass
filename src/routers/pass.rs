@@ -6,7 +6,7 @@ use axum::{
     response::Response,
 };
 
-use super::models::Password;
+use super::models::{AddPasswordRequest, Password};
 use crate::{db::Db, error::CpassError, jwt::generate::claims_from_headers, AppState};
 
 /// Get a password by id
@@ -27,7 +27,7 @@ pub async fn get_password(
     let mut conn = state.pool.conn().await?;
     let owner_id = claims_from_headers(&headers)?.sub;
 
-    let password = sqlx::query!(
+    let row = sqlx::query!(
         r#"
         SELECT id, password, name, salt, website, username, description, tags
         FROM passwords
@@ -45,19 +45,19 @@ pub async fn get_password(
         _ => CpassError::DatabaseError(err),
     })?;
 
-    let uuid = password.id;
-    let name = password.name;
-    let encrypted_password = password.password;
-    let salt = password.salt;
-    let website = password.website;
-    let username = password.username;
-    let description = password.description;
-    let tags = password.tags;
+    let uuid = row.id;
+    let name = row.name;
+    let password = row.password;
+    let salt = row.salt;
+    let website = row.website;
+    let username = row.username;
+    let description = row.description;
+    let tags = row.tags;
 
     let response: Json<Password> = Password {
         uuid,
         name,
-        encrypted_password,
+        password,
         salt,
         website,
         username,
@@ -102,7 +102,7 @@ pub async fn get_passwords(
         .map(|x| Password {
             uuid: x.id,
             name: x.name,
-            encrypted_password: x.password,
+            password: x.password,
             salt: x.salt,
             website: x.website,
             username: x.username,
@@ -113,4 +113,53 @@ pub async fn get_passwords(
         .into();
 
     Ok((StatusCode::OK, response))
+}
+
+/// Add a password
+#[utoipa::path(
+    post,
+    path = "/api/v1/pass/password",
+    tag = "Password",
+    request_body = AddPasswordResponse,
+    responses(
+        (status = 201, description = "Password created"),
+    )
+)]
+pub async fn add_password(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<AddPasswordRequest>,
+) -> Result<StatusCode, Response<String>> {
+    let mut conn = state.pool.conn().await?;
+    let AddPasswordRequest {
+        name,
+        password,
+        salt,
+        website,
+        username,
+        description,
+        tags,
+    } = request;
+
+    let owner_id = claims_from_headers(&headers)?.sub;
+
+    let _ = sqlx::query!(
+        r#"
+        INSERT INTO passwords(owner_id, name, password, salt, website, username, description, tags)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        "#,
+        owner_id,
+        name,
+        password,
+        salt,
+        website,
+        username,
+        description,
+        &tags
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(CpassError::DatabaseError)?;
+
+    Ok(StatusCode::CREATED)
 }

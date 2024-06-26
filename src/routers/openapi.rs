@@ -5,7 +5,7 @@ use utoipa::OpenApi;
 #[openapi(
     paths(
         login, create_user, update_user, delete_user,
-        get_password, add_password, get_passwords, update_password
+        get_password, add_password, get_passwords, update_password, delete_password
     ),
     components(
         schemas(

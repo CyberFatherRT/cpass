@@ -60,7 +60,7 @@ pub fn generate_bytes(number: usize) -> Vec<u8> {
     buf
 }
 
-trait Map {
+pub trait Map {
     fn get(&self, key: &str) -> anyhow::Result<Option<&str>>;
     fn contains_key(&self, key: &str) -> bool;
 }

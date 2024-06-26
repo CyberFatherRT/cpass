@@ -172,7 +172,6 @@ pub async fn add_password(
     request_body = AddPassword,
     responses(
         (status = 204, description = "Password updated"),
-        (status = 404, description = "Password not found"),
     )
 )]
 pub async fn update_password(
@@ -221,5 +220,37 @@ pub async fn update_password(
     .await
     .map_err(CpassError::DatabaseError);
 
-    Ok(StatusCode::OK)
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Delete a password by id
+#[utoipa::path(
+    delete,
+    path = "/api/v1/pass/password/{id}",
+    tag = "Password",
+    responses(
+        (status = 204, description = "Password deleted"),
+    )
+)]
+pub async fn delete_password(
+    headers: HeaderMap,
+    Path(pass_id): Path<uuid::Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> Result<StatusCode, Response<String>> {
+    let mut conn = state.pool.conn().await?;
+    let owner_id = claims_from_headers(&headers)?.sub;
+
+    let _ = sqlx::query!(
+        r#"
+        DELETE FROM passwords
+        WHERE id = $1 AND owner_id = $2
+        "#,
+        pass_id,
+        owner_id
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(CpassError::DatabaseError)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

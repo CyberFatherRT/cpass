@@ -6,7 +6,7 @@ use axum::{
     response::Response,
 };
 
-use super::models::{AddPasswordRequest, Password};
+use super::models::{AddPasswordRequest, Password, UpdatePasswordRequest};
 use crate::{db::Db, error::CpassError, jwt::generate::claims_from_headers, AppState};
 
 /// Get a password by id
@@ -162,4 +162,64 @@ pub async fn add_password(
     .map_err(CpassError::DatabaseError)?;
 
     Ok(StatusCode::CREATED)
+}
+
+/// Update a password by id
+#[utoipa::path(
+    put,
+    path = "/api/v1/pass/password/{id}",
+    tag = "Password",
+    request_body = AddPassword,
+    responses(
+        (status = 204, description = "Password updated"),
+        (status = 404, description = "Password not found"),
+    )
+)]
+pub async fn update_password(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Path(pass_id): Path<uuid::Uuid>,
+    Json(request): Json<UpdatePasswordRequest>,
+) -> Result<StatusCode, Response<String>> {
+    let mut conn = state.pool.conn().await?;
+    let owner_id = claims_from_headers(&headers)?.sub;
+
+    let UpdatePasswordRequest {
+        name,
+        password,
+        salt,
+        website,
+        username,
+        description,
+        tags,
+    } = request;
+
+    let _ = sqlx::query!(
+        r#"
+        UPDATE passwords
+        SET
+            name = COALESCE($1, name),
+            password = COALESCE($2, password),
+            salt = COALESCE($3, salt),
+            website = COALESCE($4, website),
+            username = COALESCE($5, username),
+            description = COALESCE($6, description),
+            tags = COALESCE($7, tags)
+        WHERE id = $8 AND owner_id = $9
+        "#,
+        name,
+        password,
+        salt,
+        website,
+        username,
+        description,
+        &tags.unwrap_or_default(),
+        pass_id,
+        owner_id
+    )
+    .execute(&mut *conn)
+    .await
+    .map_err(CpassError::DatabaseError);
+
+    Ok(StatusCode::OK)
 }

@@ -44,6 +44,17 @@ pub struct AddPasswordRequest {
 }
 
 #[derive(ToSchema)]
+pub struct UpdatePasswordRequest {
+    pub name: Option<String>,
+    pub password: Option<Vec<u8>>,
+    pub salt: Option<Vec<u8>>,
+    pub website: Option<String>,
+    pub username: Option<String>,
+    pub description: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
+#[derive(ToSchema)]
 pub struct Password {
     pub uuid: uuid::Uuid,
     pub name: String,
@@ -74,6 +85,115 @@ impl Serialize for Password {
         state.serialize_field("description", &self.description)?;
         state.serialize_field("tags", &self.tags)?;
         state.end()
+    }
+}
+
+struct UpdatePasswordRequestVisitor;
+
+impl<'de> Visitor<'de> for UpdatePasswordRequestVisitor {
+    type Value = UpdatePasswordRequest;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a struct representing UpdatePasswordRequest")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        let mut name = None;
+        let mut password = None;
+        let mut salt = None;
+        let mut website = None;
+        let mut username = None;
+        let mut description = None;
+        let mut tags = None;
+
+        while let Some(key) = map.next_key()? {
+            match key {
+                "name" => {
+                    if name.is_some() {
+                        return Err(de::Error::duplicate_field("name"));
+                    }
+                    name = Some(map.next_value()?)
+                }
+                "password" => {
+                    if password.is_some() {
+                        return Err(de::Error::duplicate_field("password"));
+                    }
+
+                    password = Some(map.next_value::<String>()?)
+                }
+                "salt" => {
+                    if salt.is_some() {
+                        return Err(de::Error::duplicate_field("salt"));
+                    }
+                    salt = Some(map.next_value()?)
+                }
+                "website" => {
+                    if website.is_some() {
+                        return Err(de::Error::duplicate_field("website"));
+                    }
+                    website = Some(map.next_value()?)
+                }
+                "username" => {
+                    if username.is_some() {
+                        return Err(de::Error::duplicate_field("username"));
+                    }
+                    username = Some(map.next_value()?)
+                }
+                "description" => {
+                    if description.is_some() {
+                        return Err(de::Error::duplicate_field("description"));
+                    }
+                    description = Some(map.next_value()?)
+                }
+                "tags" => {
+                    if tags.is_some() {
+                        return Err(de::Error::duplicate_field("tags"));
+                    }
+                    tags = Some(map.next_value::<Vec<String>>()?)
+                }
+                _ => {
+                    let _: de::IgnoredAny = map.next_value()?;
+                }
+            }
+        }
+
+        Ok(UpdatePasswordRequest {
+            name,
+            password: match password {
+                Some(data) => hex::decode(data).ok(),
+                None => None,
+            },
+            salt,
+            website,
+            username,
+            description,
+            tags,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for UpdatePasswordRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        deserializer.deserialize_struct(
+            "UpdatePasswordRequest",
+            &[
+                "uuid",
+                "name",
+                "password",
+                "salt",
+                "website",
+                "username",
+                "description",
+                "tags",
+            ],
+            UpdatePasswordRequestVisitor,
+        )
     }
 }
 
@@ -117,9 +237,7 @@ impl<'de> Visitor<'de> for AddPasswordRequestVisitor {
                     if salt.is_some() {
                         return Err(de::Error::duplicate_field("salt"));
                     }
-                    let temp = map.next_value();
-                    println!("{:?}", temp);
-                    salt = Some(temp?)
+                    salt = Some(map.next_value()?)
                 }
                 "website" => {
                     if website.is_some() {

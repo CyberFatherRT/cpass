@@ -72,9 +72,10 @@ impl Serialize for Password {
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct("Password", 8)?;
+        let binding = Vec::new();
         let salt = match &self.salt {
             Some(data) => data,
-            None => &Vec::new(),
+            None => &binding,
         };
         state.serialize_field("id", &self.uuid)?;
         state.serialize_field("name", &self.name)?;

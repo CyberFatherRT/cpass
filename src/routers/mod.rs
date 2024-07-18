@@ -1,5 +1,6 @@
 pub mod auth;
 mod models;
+#[cfg(feature = "swagger")]
 pub mod openapi;
 pub mod pass;
 

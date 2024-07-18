@@ -1,0 +1,47 @@
+services:
+  http:
+    image: http_backend
+    build:
+      context: .
+      target: final-http
+    secrets:
+      - db-password
+    environment:
+      - ADDR=0.0.0.0:8000
+      - DB_PASSWORD_FILE=/run/secrets/db-password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  grpc:
+    image: grpc_backend
+    build:
+      context: .
+      target: final-grpc
+    secrets:
+      - db-password
+    environment:
+      - ADDR=0.0.0.0:8000
+      - DB_PASSWORD_FILE=/run/secrets/db-password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres
+    user: postgres
+    secrets:
+      - db-password
+    environment:
+      - POSTGRES_DB=cpass
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+secrets:
+  db-password:
+    file: secrets/db-password.txt

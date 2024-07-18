@@ -1,4 +1,5 @@
 FROM rust:1.78.0-buster AS chef
+
 WORKDIR /app
 
 RUN cargo install cargo-chef
@@ -6,7 +7,6 @@ RUN cargo init --name cpass
 
 COPY Cargo.toml Cargo.lock ./
 RUN cargo chef prepare --recipe-path recipe.json
-
 
 FROM rust:1.78.0-buster AS planner
 WORKDIR /root
@@ -26,12 +26,10 @@ COPY --from=chef /app/recipe.json recipe.json
 COPY proto proto
 COPY build.rs build.rs
 
-RUN RUSTFLAGS="-C target-feature=+crt-static" cargo chef cook --release --recipe-path recipe.json --target x86_64-unknown-linux-musl
-
+RUN cargo chef cook --release --recipe-path recipe.json --target x86_64-unknown-linux-musl
 
 
 FROM rust:1.78.0-buster AS builder
-ENV RUSTFLAGS="-C target-feature=+crt-static"
 WORKDIR /root
 
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v27.1/protoc-27.1-linux-x86_64.zip -O ~/protoc.zip \
@@ -55,11 +53,10 @@ COPY --from=planner /app/Cargo.lock Cargo.lock
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
 
-FROM alpine AS final
-WORKDIR /app
+FROM alpine AS final-grpc
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/grpc app
+ENTRYPOINT [ "/app" ]
 
-COPY .scripts/run_all.sh .
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/grpc ./run/grpc
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/http ./run/http
-
-ENTRYPOINT [ "./run_all.sh" ]
+FROM alpine AS final-http
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/http app
+ENTRYPOINT [ "/app" ]

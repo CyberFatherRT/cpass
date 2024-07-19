@@ -18,11 +18,13 @@ use tracing::{info, Level};
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .compact()
-        .with_target(true)
-        .with_max_level(Level::DEBUG)
-        .init();
+    if env::var("LOGGING").is_ok() {
+        tracing_subscriber::fmt()
+            .compact()
+            .with_target(true)
+            .with_max_level(Level::DEBUG)
+            .init();
+    }
 
     let db_url = match env::var("DB_PASSWORD_FILE") {
         Ok(file) => format!(

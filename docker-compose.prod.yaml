@@ -1,6 +1,6 @@
 services:
   http:
-    image: http_backend
+    image: 10.10.10.10:5000/http
     build:
       context: .
       target: final-http
@@ -10,25 +10,63 @@ services:
       - ADDR=0.0.0.0:8000
       - DB_PASSWORD_FILE=/run/secrets/db-password
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+    deploy:
+      replicas: 9
+      placement:
+        constraints: [node.role == worker]
+        max_replicas_per_node: 3
 
   grpc:
-    image: grpc_backend
+    image: 10.10.10.10:5000/grpc
     build:
       context: .
       target: final-grpc
     secrets:
       - db-password
     environment:
-      - ADDR=0.0.0.0:8000
+      - ADDR=0.0.0.0:50051
       - DB_PASSWORD_FILE=/run/secrets/db-password
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+    deploy:
+      replicas: 9
+      placement:
+        constraints: [node.role == worker]
+        max_replicas_per_node: 3
+
+  proxy_worker:
+    image: 10.10.10.10:5000/proxy-worker
+    build:
+      context: proxy
+      args:
+        role: worker
+    depends_on:
+      - http
+      - grpc
+    deploy:
+      placement:
+        constraints: [node.role == worker]
+
+  proxy_manager:
+    image: 10.10.10.10:5000/proxy-manager
+    build:
+      context: proxy
+      args:
+        role: manager
+    ports:
+      - 80:80
+      - 443:443
+      - 50051:50051
+    depends_on:
+      - proxy_worker
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
 
   db:
-    image: postgres
+    image: postgres:16.3-alpine3.20
     user: postgres
     secrets:
       - db-password
@@ -36,11 +74,9 @@ services:
       - POSTGRES_DB=cpass
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
-    healthcheck:
-      test: ["CMD", "pg_isready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    deploy:
+      placement:
+        constraints: [node.role == manager]
 
 secrets:
   db-password:

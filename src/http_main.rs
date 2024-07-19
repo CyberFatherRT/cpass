@@ -28,18 +28,18 @@ struct AppState {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .compact()
-        .with_target(true)
-        .with_max_level(Level::DEBUG)
-        .init();
+    // tracing_subscriber::fmt()
+    //     .compact()
+    //     .with_target(true)
+    //     .with_max_level(Level::DEBUG)
+    //     .init();
 
     let db_url = match env::var("DB_PASSWORD_FILE") {
         Ok(file) => format!(
             "postgres://postgres:{}@db:5432/cpass",
             read_to_string(file)?
         ),
-        Err(_) => env::var("DB_URL")?,
+        Err(_) => env::var("DATABASE_URL")?,
     };
     let addr = env::var("ADDR")?;
     let pool = PgPool::connect(&db_url).await?;

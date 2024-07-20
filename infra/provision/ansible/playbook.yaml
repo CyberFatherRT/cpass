@@ -1,0 +1,15 @@
+- name: Run common tasks on all machines
+  hosts: all
+  roles:
+    - common
+
+- name: Setup master node
+  hosts: masters
+  roles:
+    - master
+
+- name: Setup worker nodes
+  hosts: workers
+  tags: worker
+  roles:
+    - worker

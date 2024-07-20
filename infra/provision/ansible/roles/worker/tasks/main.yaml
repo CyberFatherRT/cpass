@@ -1,0 +1,10 @@
+- name: Leave all swarm
+  community.docker.docker_swarm:
+    state: absent
+
+- name: Join to Swarm
+  community.docker.docker_swarm:
+    advertise_addr: eth1
+    state: join
+    join_token: "{{ hostvars['master']['worker_token'] }}"
+    remote_addrs: ["{{ master_addr }}"]

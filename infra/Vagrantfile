@@ -1,0 +1,23 @@
+Vagrant.configure('2') do |config|
+  config.vm.box = 'generic/ubuntu2204'
+
+  config.vm.define 'master' do |master|
+    master.vm.hostname = 'master'
+    master.vm.network 'private_network', ip: '10.10.10.10'
+    master.vm.provider 'libvirt' do |lv|
+      lv.memory = 2048
+      lv.cpus = 2
+    end
+  end
+
+  (1..3).each do |i|
+    config.vm.define "worker#{i}" do |worker|
+      worker.vm.hostname = "worker#{i}"
+      worker.vm.network 'private_network', ip: "10.10.10.1#{i}"
+      worker.vm.provider 'libvirt' do |lv|
+        lv.memory = 1024
+        lv.cpus = 1
+      end
+    end
+  end
+end

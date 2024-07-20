@@ -1,0 +1,31 @@
+services:
+  http:
+    build:
+      context: .
+      target: final-http
+    environment:
+      - ADDR=0.0.0.0:8000
+      - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+
+  grpc:
+    build:
+      context: .
+      target: final-grpc
+    environment:
+      - ADDR=0.0.0.0:50051
+      - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
+    ports:
+      - 50051:50051
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16.3-alpine3.20
+    environment:
+      - POSTGRES_DB=cpass
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=pass

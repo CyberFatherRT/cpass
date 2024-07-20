@@ -1,0 +1,45 @@
+- name: Install dependencies
+  become: true
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+    update_cache: true
+
+- name: Install Docker
+  become: true
+  ansible.builtin.apt:
+    name:
+      - docker.io
+  notify:
+    - Restart docker
+
+- name: Add user to docker group
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+
+- name: Install docker sdk for python
+  ansible.builtin.pip:
+    name: docker
+
+- name: Create Docker daemon config
+  become: true
+  ansible.builtin.copy:
+    src: daemon.json
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+    owner: root
+    force: true
+  notify:
+    - Restart docker
+
+- name: Login to github container register
+  tags:
+    - cr_login
+    - never
+  community.docker.docker_login:
+    username: "{{ username }}"
+    password: "{{ lookup('ansible.builtin.unvault', 'ghcr_token') }}"
+    registry_url: "{{ registry_url }}"

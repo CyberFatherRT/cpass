@@ -1,7 +1,7 @@
 node_modules
 .idea
 secrets
-infra
+infra/.vagrant
 
 # Output
 .output

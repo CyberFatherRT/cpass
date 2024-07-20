@@ -1,0 +1,36 @@
+- name: Init a new swarm with
+  community.docker.docker_swarm:
+    advertise_addr: eth1
+  register: swarm_output
+
+- name: Save swarm_token
+  ansible.builtin.set_fact:
+    worker_token: "{{ swarm_output.swarm_facts.JoinTokens.Worker }}"
+
+- name: Create image register
+  community.docker.docker_swarm_service:
+    name: register
+    image: alpine
+    placement:
+      constraints:
+        - node.role == manager
+
+- name: Install jsondiff python package
+  tags: portainer
+  ansible.builtin.pip:
+    name: jsondiff
+
+- name: Copy portainer stack file to manager node
+  tags: portainer
+  ansible.builtin.copy:
+    src: portainer-agent-stack.yaml
+    dest: portainer-agent-stack.yaml
+    owner: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Deploy portainer stack to swarm
+  tags: portainer
+  community.docker.docker_stack:
+    name: portainer
+    compose:
+      - portainer-agent-stack.yaml

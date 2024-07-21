@@ -35,6 +35,9 @@
   notify:
     - Restart docker
 
+- name: Reset ssh connection
+  ansible.builtin.meta: reset_connection
+
 - name: Login to github container register
   tags:
     - cr_login

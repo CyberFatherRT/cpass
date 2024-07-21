@@ -1,3 +1,6 @@
+- name: Reset ssh connection
+  ansible.builtin.meta: reset_connection
+
 - name: Init a new swarm with
   community.docker.docker_swarm:
     advertise_addr: eth1

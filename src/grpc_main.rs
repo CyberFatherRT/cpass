@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
         .add_service(AuthServer::new(AuthService::new(pool.clone())))
         .add_service(PassServer::new(PassService::new(pool.clone())))
         .serve(addr)
-        .await;
+        .await?;
 
     Ok(())
 }

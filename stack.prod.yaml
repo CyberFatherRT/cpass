@@ -4,11 +4,9 @@ services:
     build:
       context: .
       target: final-http
-    secrets:
-      - db-password
     environment:
       - ADDR=0.0.0.0:8000
-      - DB_PASSWORD_FILE=/run/secrets/db-password
+      - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
     depends_on:
       - db
     deploy:
@@ -21,11 +19,10 @@ services:
     build:
       context: .
       target: final-grpc
-    secrets:
-      - db-password
     environment:
+      - LOGGING=
       - ADDR=0.0.0.0:50051
-      - DB_PASSWORD_FILE=/run/secrets/db-password
+      - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
     depends_on:
       - db
     deploy:
@@ -36,7 +33,7 @@ services:
   proxy_worker:
     image: ghcr.io/cyberfatherrt/cpass_proxy_worker
     build:
-      context: proxy
+      context: proxy/nginx
       args:
         role: worker
     depends_on:
@@ -50,7 +47,7 @@ services:
   proxy_manager:
     image: ghcr.io/cyberfatherrt/cpass_proxy_manager
     build:
-      context: proxy
+      context: proxy/haproxy
       args:
         role: manager
     ports:
@@ -66,16 +63,10 @@ services:
   db:
     image: postgres:16.3-alpine3.20
     user: postgres
-    secrets:
-      - db-password
     environment:
       - POSTGRES_DB=cpass
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+      - POSTGRES_PASSWORD=pass
     deploy:
       placement:
         constraints: [node.role == manager]
-
-secrets:
-  db-password:
-    file: secrets/db-password.txt

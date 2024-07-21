@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
     let pass_app = routers::get_pass_service(app_state.clone());
 
     let app = Router::new()
-        .route("/api/healthcheck", get(StatusCode::OK))
+        .route("/api/healthcheck", get(StatusCode::CREATED))
         .nest("/api/v1/pass", pass_app)
         .nest("/api/v1/auth", auth_app)
         .layer(

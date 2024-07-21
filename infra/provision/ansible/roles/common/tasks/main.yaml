@@ -19,13 +19,12 @@
     name: "{{ ansible_user }}"
     groups: docker
     append: true
+  notify:
+    - Reset ssh connection
 
 - name: Install docker sdk for python
   ansible.builtin.pip:
     name: docker
-
-- name: Reset ssh connection
-  ansible.builtin.meta: reset_connection
 
 - name: Login to github container register
   tags:

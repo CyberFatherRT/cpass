@@ -1,4 +1,7 @@
 - name: Leave all swarm
+  tags:
+    - leave_swarm
+    - never
   community.docker.docker_swarm:
     state: absent
 

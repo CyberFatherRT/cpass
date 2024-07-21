@@ -4,6 +4,10 @@ services:
     build:
       context: .
       target: final-http
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max
     environment:
       - ADDR=0.0.0.0:8000
       - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
@@ -19,8 +23,11 @@ services:
     build:
       context: .
       target: final-grpc
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max
     environment:
-      - LOGGING=
       - ADDR=0.0.0.0:50051
       - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
     depends_on:

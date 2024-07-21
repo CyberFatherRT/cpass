@@ -1,6 +1,3 @@
-- name: Reset ssh connection
-  ansible.builtin.meta: reset_connection
-
 - name: Init a new swarm with
   community.docker.docker_swarm:
     advertise_addr: eth1
@@ -9,14 +6,6 @@
 - name: Save swarm_token
   ansible.builtin.set_fact:
     worker_token: "{{ swarm_output.swarm_facts.JoinTokens.Worker }}"
-
-- name: Create image register
-  community.docker.docker_swarm_service:
-    name: register
-    image: alpine
-    placement:
-      constraints:
-        - node.role == manager
 
 - name: Install jsondiff python package
   tags: portainer

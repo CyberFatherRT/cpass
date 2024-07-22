@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, password, name, salt, website, username, description, tags\n        FROM passwords\n        WHERE owner_id = $1\n        ",
+  "query": "\n        SELECT id, password, name, website, username, description\n        FROM passwords\n        WHERE owner_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -16,32 +16,22 @@
       {
         "ordinal": 2,
         "name": "name",
-        "type_info": "Text"
+        "type_info": "Bytea"
       },
       {
         "ordinal": 3,
-        "name": "salt",
+        "name": "website",
         "type_info": "Bytea"
       },
       {
         "ordinal": 4,
-        "name": "website",
-        "type_info": "Text"
+        "name": "username",
+        "type_info": "Bytea"
       },
       {
         "ordinal": 5,
-        "name": "username",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 6,
         "name": "description",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 7,
-        "name": "tags",
-        "type_info": "TextArray"
+        "type_info": "Bytea"
       }
     ],
     "parameters": {
@@ -55,10 +45,8 @@
       false,
       true,
       true,
-      true,
-      true,
-      false
+      true
     ]
   },
-  "hash": "db1ad9d3ca48f996f96c3788f6b8ac0c236b09a83cfaf798a1b9a88076e35ac5"
+  "hash": "18cd2f161ff3f0ed265de2574996d2fc0351a276d15c02890e6774a6656c2113"
 }

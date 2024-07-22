@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE passwords\n        SET\n            name = COALESCE($1, name),\n            password = COALESCE($2, password),\n            website = COALESCE($3, website),\n            username = COALESCE($4, username),\n            description = COALESCE($5, description)\n        WHERE id = $6 AND owner_id = $7\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Bytea",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "00397ab2c8d19c04e6982967395c65ac0caa76a0e57668dce5f790683ef67a31"
+}

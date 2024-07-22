@@ -12,16 +12,14 @@ CREATE TABLE IF NOT EXISTS passwords
 (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     owner_id    UUID   NOT NULL,
-    name        TEXT   NOT NULL,
+    name        BYTEA  NOT NULL,
     password    BYTEA  NOT NULL,
-    salt        BYTEA,
-    website     TEXT,
-    username    TEXT,
-    description TEXT,
-    tags        TEXT[] NOT NULL  DEFAULT ARRAY []::TEXT[],
+    website     BYTEA,
+    username    BYTEA,
+    description BYTEA,
     CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users (id)
 );
 
-CREATE INDEX idx_email ON users USING hash (email);
+CREATE INDEX idx_email ON users (email);
 CREATE INDEX idx_passwords_owner_id ON passwords (owner_id);
 

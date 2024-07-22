@@ -5,5 +5,5 @@ package types;
 message Empty {}
 
 message Uuid {
-  string uuid = 1;
+  bytes uuid = 1;
 }

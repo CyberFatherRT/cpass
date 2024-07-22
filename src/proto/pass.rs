@@ -28,15 +28,14 @@ impl Pass for PassService {
     async fn get_password(&self, request: Request<Uuid>) -> Result<Response<Password>, Status> {
         let mut conn = self.pool.conn().await?;
         let Uuid { uuid } = request.get_ref();
-        let pass_id = uuid
-            .parse::<uuid::Uuid>()
+        let pass_id = uuid::Uuid::from_slice(uuid)
             .map_err(|_| Status::invalid_argument("Can not parse string as uuid."))?;
 
         let owner_id = claims_from_headers(request.metadata())?.sub;
 
         let row = sqlx::query!(
             r#"
-            SELECT id, password, name, salt, website, username, description, tags
+            SELECT id, password, name, website, username, description
             FROM passwords
             WHERE id = $1 AND owner_id = $2
             "#,
@@ -51,14 +50,12 @@ impl Pass for PassService {
         })?;
 
         Ok(Response::new(Password {
-            uuid: row.id.to_string(),
+            uuid: row.id.into(),
             name: row.name,
-            encrypted_password: hex::encode(row.password),
-            salt: row.salt.map(hex::encode),
+            password: row.password,
             website: row.website,
             username: row.username,
             description: row.description,
-            tags: row.tags,
         }))
     }
 
@@ -69,7 +66,7 @@ impl Pass for PassService {
 
         let passwords = sqlx::query!(
             r#"
-            SELECT id, password, name, salt, website, username, description, tags
+            SELECT id, password, name, website, username, description
             FROM passwords
             WHERE owner_id = $1
             "#,
@@ -82,14 +79,12 @@ impl Pass for PassService {
         let passwords = passwords
             .into_iter()
             .map(|x| Password {
-                uuid: x.id.to_string(),
+                uuid: x.id.into(),
                 name: x.name,
-                encrypted_password: hex::encode(x.password),
-                salt: x.salt.map(hex::encode),
+                password: x.password,
                 website: x.website,
                 username: x.username,
                 description: x.description,
-                tags: x.tags,
             })
             .collect::<Vec<Password>>();
 
@@ -103,39 +98,28 @@ impl Pass for PassService {
         let AddPasswordRequest {
             name,
             password,
-            salt,
             website,
             username,
             description,
-            tags,
-        } = request.get_ref().to_owned();
+        } = request.get_ref();
 
         let owner_id = claims_from_headers(request.metadata())?.sub;
 
         let password = hex::decode(password)
             .map_err(|_| Status::invalid_argument("Can not decode password from hex"))?;
 
-        let salt = salt
-            .map(|data| {
-                hex::decode(data)
-                    .map_err(|_| Status::invalid_argument("Can not decode salt from hex"))
-            })
-            .transpose()?;
-
         let row = sqlx::query!(
             r#"
-            INSERT INTO passwords(owner_id, name, password, salt, website, username, description, tags)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO passwords(owner_id, name, password, website, username, description)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
             "#,
             owner_id,
             name,
             password,
-            salt,
-            website,
-            username,
-            description,
-            &tags
+            website.as_ref(),
+            username.as_ref(),
+            description.as_ref(),
         )
         .fetch_one(&mut *conn)
         .await
@@ -155,11 +139,9 @@ impl Pass for PassService {
             uuid,
             name,
             password,
-            salt,
             website,
             username,
             description,
-            tags,
         } = request.get_ref().to_owned();
 
         let owner_id = claims_from_headers(request.metadata())?.sub;
@@ -171,16 +153,8 @@ impl Pass for PassService {
             })
             .transpose()?;
 
-        let salt = salt
-            .map(|data| {
-                hex::decode(data)
-                    .map_err(|_| Status::invalid_argument("Can not decode salt from hex"))
-            })
-            .transpose()?;
-
-        let pass_id: uuid::Uuid = uuid
-            .parse()
-            .map_err(|_| Status::invalid_argument("Can not parse uuid field as UUID"))?;
+        let pass_id = uuid::Uuid::from_slice(&uuid)
+            .map_err(|_| Status::invalid_argument("Can not parse string as uuid."))?;
 
         let _ = sqlx::query!(
             r#"
@@ -188,20 +162,16 @@ impl Pass for PassService {
             SET
                 name = COALESCE($1, name),
                 password = COALESCE($2, password),
-                salt = COALESCE($3, salt),
-                website = COALESCE($4, website),
-                username = COALESCE($5, username),
-                description = COALESCE($6, description),
-                tags = COALESCE($7, tags)
-            WHERE id = $8 AND owner_id = $9
+                website = COALESCE($3, website),
+                username = COALESCE($4, username),
+                description = COALESCE($5, description)
+            WHERE id = $6 AND owner_id = $7
             "#,
             name,
             password,
-            salt,
             website,
             username,
             description,
-            &tags,
             pass_id,
             owner_id
         )
@@ -220,9 +190,8 @@ impl Pass for PassService {
         let DeletePasswordRequest { uuid } = request.get_ref();
 
         let owner_id = claims_from_headers(request.metadata())?.sub;
-        let pass_id: uuid::Uuid = uuid
-            .parse()
-            .map_err(|_| Status::invalid_argument("Can not parse uuid field as UUID"))?;
+        let pass_id = uuid::Uuid::from_slice(uuid)
+            .map_err(|_| Status::invalid_argument("Can not parse string as uuid."))?;
 
         let _ = sqlx::query!(
             r#"

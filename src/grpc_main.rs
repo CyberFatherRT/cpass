@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("gRPC server listening on {}", addr);
 
-    let _ = Server::builder()
+    Server::builder()
         .add_service(reflection)
         .add_service(AuthServer::new(AuthService::new(pool.clone())))
         .add_service(PassServer::new(PassService::new(pool.clone())))

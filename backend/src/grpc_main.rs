@@ -4,7 +4,7 @@ mod hashing;
 mod jwt;
 mod proto;
 
-use std::{env, fs::read_to_string};
+use std::fs::read_to_string;
 
 use crate::proto::{
     auth::AuthService, auth_proto::auth_server::AuthServer, pass::PassService,
@@ -18,7 +18,7 @@ use tracing::{info, Level};
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    if env::var("LOGGING").is_ok() {
+    if dotenvy::var("LOGGING").is_ok() {
         tracing_subscriber::fmt()
             .compact()
             .with_target(true)
@@ -26,14 +26,14 @@ async fn main() -> anyhow::Result<()> {
             .init();
     }
 
-    let db_url = match env::var("DB_PASSWORD_FILE") {
+    let db_url = match dotenvy::var("DB_PASSWORD_FILE") {
         Ok(file) => format!(
             "postgres://postgres:{}@db:5432/cpass",
             read_to_string(file)?
         ),
-        Err(_) => env::var("DATABASE_URL")?,
+        Err(_) => dotenvy::var("DATABASE_URL")?,
     };
-    let addr = env::var("ADDR")?.parse()?;
+    let addr = dotenvy::var("ADDR")?.parse()?;
     let pool = PgPool::connect(&db_url).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;

@@ -29,7 +29,7 @@ pub async fn get_password(
 
     let row = sqlx::query!(
         r#"
-        SELECT id, password, name, salt, website, username, description, tags
+        SELECT id, password, name, website, username, description
         FROM passwords
         WHERE id = $1 AND owner_id = $2
         "#,
@@ -45,24 +45,13 @@ pub async fn get_password(
         _ => CpassError::DatabaseError(err),
     })?;
 
-    let uuid = row.id;
-    let name = row.name;
-    let password = row.password;
-    let salt = row.salt;
-    let website = row.website;
-    let username = row.username;
-    let description = row.description;
-    let tags = row.tags;
-
     let response: Json<Password> = Password {
-        uuid,
-        name,
-        password,
-        salt,
-        website,
-        username,
-        description,
-        tags,
+        uuid: row.id,
+        name: row.name,
+        password: row.password,
+        website: row.website,
+        username: row.username,
+        description: row.description,
     }
     .into();
 
@@ -87,7 +76,7 @@ pub async fn get_passwords(
 
     let passwords = sqlx::query!(
         r#"
-        SELECT id, password, name, salt, website, username, description, tags
+        SELECT id, password, name, website, username, description
         FROM passwords
         WHERE owner_id = $1
         "#,
@@ -103,11 +92,9 @@ pub async fn get_passwords(
             uuid: x.id,
             name: x.name,
             password: x.password,
-            salt: x.salt,
             website: x.website,
             username: x.username,
             description: x.description,
-            tags: x.tags,
         })
         .collect::<Vec<Password>>()
         .into();
@@ -134,28 +121,24 @@ pub async fn add_password(
     let AddPasswordRequest {
         name,
         password,
-        salt,
         website,
         username,
         description,
-        tags,
     } = request;
 
     let owner_id = claims_from_headers(&headers)?.sub;
 
     let _ = sqlx::query!(
         r#"
-        INSERT INTO passwords(owner_id, name, password, salt, website, username, description, tags)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO passwords(owner_id, name, password, website, username, description)
+        VALUES ($1, $2, $3, $4, $5, $6)
         "#,
         owner_id,
         name,
         password,
-        salt,
         website,
         username,
         description,
-        &tags
     )
     .execute(&mut *conn)
     .await
@@ -186,11 +169,9 @@ pub async fn update_password(
     let UpdatePasswordRequest {
         name,
         password,
-        salt,
         website,
         username,
         description,
-        tags,
     } = request;
 
     let _ = sqlx::query!(
@@ -199,20 +180,16 @@ pub async fn update_password(
         SET
             name = COALESCE($1, name),
             password = COALESCE($2, password),
-            salt = COALESCE($3, salt),
-            website = COALESCE($4, website),
-            username = COALESCE($5, username),
-            description = COALESCE($6, description),
-            tags = COALESCE($7, tags)
-        WHERE id = $8 AND owner_id = $9
+            website = COALESCE($3, website),
+            username = COALESCE($4, username),
+            description = COALESCE($5, description)
+        WHERE id = $6 AND owner_id = $7
         "#,
         name,
         password,
-        salt,
         website,
         username,
         description,
-        &tags.unwrap_or_default(),
         pass_id,
         owner_id
     )

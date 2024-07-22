@@ -1,3 +1,4 @@
+use base64::Engine;
 use serde::{
     de::{self, Visitor},
     ser::SerializeStruct,
@@ -34,36 +35,40 @@ pub struct UpdateUserRequest {
 
 #[derive(ToSchema)]
 pub struct AddPasswordRequest {
-    pub name: String,
+    pub name: Vec<u8>,
     pub password: Vec<u8>,
-    pub salt: Option<Vec<u8>>,
-    pub website: Option<String>,
-    pub username: Option<String>,
-    pub description: Option<String>,
-    pub tags: Vec<String>,
+    pub website: Option<Vec<u8>>,
+    pub username: Option<Vec<u8>>,
+    pub description: Option<Vec<u8>>,
 }
 
 #[derive(ToSchema)]
 pub struct UpdatePasswordRequest {
-    pub name: Option<String>,
+    pub name: Option<Vec<u8>>,
     pub password: Option<Vec<u8>>,
-    pub salt: Option<Vec<u8>>,
-    pub website: Option<String>,
-    pub username: Option<String>,
-    pub description: Option<String>,
-    pub tags: Option<Vec<String>>,
+    pub website: Option<Vec<u8>>,
+    pub username: Option<Vec<u8>>,
+    pub description: Option<Vec<u8>>,
 }
 
 #[derive(ToSchema)]
 pub struct Password {
     pub uuid: uuid::Uuid,
-    pub name: String,
+    pub name: Vec<u8>,
     pub password: Vec<u8>,
-    pub salt: Option<Vec<u8>>,
-    pub website: Option<String>,
-    pub username: Option<String>,
-    pub description: Option<String>,
-    pub tags: Vec<String>,
+    pub website: Option<Vec<u8>>,
+    pub username: Option<Vec<u8>>,
+    pub description: Option<Vec<u8>>,
+}
+
+fn to_base64(data: &[u8]) -> String {
+    base64::prelude::BASE64_STANDARD.encode(data)
+}
+
+fn from_base64(data: &str) -> Option<Vec<u8>> {
+    base64::prelude::BASE64_STANDARD
+        .decode(data.as_bytes())
+        .ok()
 }
 
 impl Serialize for Password {
@@ -71,20 +76,16 @@ impl Serialize for Password {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("Password", 8)?;
-        let binding = Vec::new();
-        let salt = match &self.salt {
-            Some(data) => data,
-            None => &binding,
-        };
+        let mut state = serializer.serialize_struct("Password", 6)?;
         state.serialize_field("id", &self.uuid)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("password", &hex::encode(&self.password))?;
-        state.serialize_field("salt", &hex::encode(salt))?;
-        state.serialize_field("website", &self.website)?;
-        state.serialize_field("username", &self.username)?;
-        state.serialize_field("description", &self.description)?;
-        state.serialize_field("tags", &self.tags)?;
+        state.serialize_field("name", &to_base64(&self.name))?;
+        state.serialize_field("password", &to_base64(&self.password))?;
+        state.serialize_field("website", &self.website.as_ref().map(|x| to_base64(x)))?;
+        state.serialize_field("username", &self.username.as_ref().map(|x| to_base64(x)))?;
+        state.serialize_field(
+            "description",
+            &self.description.as_ref().map(|x| to_base64(x)),
+        )?;
         state.end()
     }
 }
@@ -104,11 +105,9 @@ impl<'de> Visitor<'de> for UpdatePasswordRequestVisitor {
     {
         let mut name = None;
         let mut password = None;
-        let mut salt = None;
         let mut website = None;
         let mut username = None;
         let mut description = None;
-        let mut tags = None;
 
         while let Some(key) = map.next_key()? {
             match key {
@@ -123,13 +122,7 @@ impl<'de> Visitor<'de> for UpdatePasswordRequestVisitor {
                         return Err(de::Error::duplicate_field("password"));
                     }
 
-                    password = Some(map.next_value::<String>()?)
-                }
-                "salt" => {
-                    if salt.is_some() {
-                        return Err(de::Error::duplicate_field("salt"));
-                    }
-                    salt = Some(map.next_value()?)
+                    password = Some(map.next_value()?)
                 }
                 "website" => {
                     if website.is_some() {
@@ -149,29 +142,20 @@ impl<'de> Visitor<'de> for UpdatePasswordRequestVisitor {
                     }
                     description = Some(map.next_value()?)
                 }
-                "tags" => {
-                    if tags.is_some() {
-                        return Err(de::Error::duplicate_field("tags"));
-                    }
-                    tags = Some(map.next_value::<Vec<String>>()?)
-                }
                 _ => {
                     let _: de::IgnoredAny = map.next_value()?;
                 }
             }
         }
 
+        let to_result = || de::Error::custom("Can not decode `password` from base64");
+
         Ok(UpdatePasswordRequest {
-            name,
-            password: match password {
-                Some(data) => hex::decode(data).ok(),
-                None => None,
-            },
-            salt,
-            website,
-            username,
-            description,
-            tags,
+            name: name.map(from_base64).ok_or_else(to_result)?,
+            password: password.map(from_base64).ok_or_else(to_result)?,
+            website: website.map(from_base64).ok_or_else(to_result)?,
+            username: username.map(from_base64).ok_or_else(to_result)?,
+            description: description.map(from_base64).ok_or_else(to_result)?,
         })
     }
 }
@@ -187,11 +171,9 @@ impl<'de> Deserialize<'de> for UpdatePasswordRequest {
                 "uuid",
                 "name",
                 "password",
-                "salt",
                 "website",
                 "username",
                 "description",
-                "tags",
             ],
             UpdatePasswordRequestVisitor,
         )
@@ -213,11 +195,9 @@ impl<'de> Visitor<'de> for AddPasswordRequestVisitor {
     {
         let mut name = None;
         let mut password = None;
-        let mut salt = None;
         let mut website = None;
         let mut username = None;
         let mut description = None;
-        let mut tags = None;
 
         while let Some(key) = map.next_key()? {
             match key {
@@ -233,12 +213,6 @@ impl<'de> Visitor<'de> for AddPasswordRequestVisitor {
                     }
 
                     password = Some(map.next_value::<String>()?)
-                }
-                "salt" => {
-                    if salt.is_some() {
-                        return Err(de::Error::duplicate_field("salt"));
-                    }
-                    salt = Some(map.next_value()?)
                 }
                 "website" => {
                     if website.is_some() {
@@ -258,29 +232,23 @@ impl<'de> Visitor<'de> for AddPasswordRequestVisitor {
                     }
                     description = Some(map.next_value()?)
                 }
-                "tags" => {
-                    if tags.is_some() {
-                        return Err(de::Error::duplicate_field("tags"));
-                    }
-                    tags = Some(map.next_value::<Vec<String>>()?)
-                }
                 _ => {
                     let _: de::IgnoredAny = map.next_value()?;
                 }
             }
         }
 
+        let to_result = || de::Error::custom("Can not decode `password` from base64");
+
         let name = name.ok_or_else(|| de::Error::missing_field("name"))?;
         let password = password.ok_or_else(|| de::Error::missing_field("password"))?;
 
         Ok(AddPasswordRequest {
             name,
-            password: hex::decode(password).map_err(|e| de::Error::custom(e.to_string()))?,
-            salt,
-            website,
-            username,
-            description,
-            tags: tags.unwrap_or_default(),
+            password: from_base64(&password).ok_or_else(to_result)?,
+            website: website.map(from_base64).ok_or_else(to_result)?,
+            username: username.map(from_base64).ok_or_else(to_result)?,
+            description: description.map(from_base64).ok_or_else(to_result)?,
         })
     }
 }
@@ -292,15 +260,7 @@ impl<'de> Deserialize<'de> for AddPasswordRequest {
     {
         deserializer.deserialize_struct(
             "AddPasswordRequest",
-            &[
-                "name",
-                "password",
-                "salt",
-                "website",
-                "username",
-                "description",
-                "tags",
-            ],
+            &["name", "password", "website", "username", "description"],
             AddPasswordRequestVisitor,
         )
     }

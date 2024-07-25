@@ -47,11 +47,14 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
+    let (_, health_service) = tonic_health::server::health_reporter();
+
     let reflection = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
         .build()?;
 
     let grpc = Server::builder()
+        .add_service(health_service)
         .add_service(reflection)
         .add_service(AuthServer::new(AuthService::new(pool.clone())))
         .add_service(PassServer::new(PassService::new(pool.clone())))

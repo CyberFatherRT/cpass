@@ -1,6 +1,6 @@
 services:
   cpass:
-    image: ghcr.io/cyberfatherrt/cpass-backend
+    image: ghcr.io/cyberfatherrt/cpass-backend:health
     build:
       context: backend
     environment:

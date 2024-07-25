@@ -1,24 +1,14 @@
 services:
-  http:
+  cpass:
+    image: ghcr.io/cyberfatherrt/cpass-backend
     build:
       context: backend
-      target: final-http
     environment:
-      - ADDR=0.0.0.0:8000
+      - HTTP_ADDR=0.0.0.0:8000
+      - GRPC_ADDR=0.0.0.0:50051
       - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
     ports:
       - 8000:8000
-    depends_on:
-      - db
-
-  grpc:
-    build:
-      context: backend
-      target: final-grpc
-    environment:
-      - ADDR=0.0.0.0:50051
-      - DATABASE_URL=postgres://postgres:pass@db:5432/cpass
-    ports:
       - 50051:50051
     depends_on:
       - db

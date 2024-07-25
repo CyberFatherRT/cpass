@@ -52,11 +52,6 @@ COPY --from=planner /app/Cargo.lock Cargo.lock
 
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
-
-FROM alpine AS final-grpc
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/grpc app
-ENTRYPOINT [ "/app" ]
-
-FROM alpine AS final-http
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/http app
+FROM alpine AS final
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/cpass app
 ENTRYPOINT [ "/app" ]

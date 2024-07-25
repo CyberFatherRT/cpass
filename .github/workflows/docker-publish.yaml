@@ -39,5 +39,5 @@ jobs:
       - name: Build and push Docker image
         id: build-and-push
         run: |
-          docker compose -f stack.prod.yaml build
-          docker compose -f stack.prod.yaml push
+          docker compose -f docker-compose.yaml build
+          docker compose -f docker-compose.yaml push

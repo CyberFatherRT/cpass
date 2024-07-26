@@ -1,0 +1,13 @@
+[package]
+name = "cli-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.9", features = ["derive"] }
+prost = { version = "0.13.1" }
+tokio = { version = "1.38.1", features = ["full"] }
+tonic = "0.12.1"
+
+[build-dependencies]
+tonic-build = "0.12.1"
